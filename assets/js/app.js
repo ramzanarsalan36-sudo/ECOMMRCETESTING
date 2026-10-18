@@ -85,12 +85,7 @@ function addToCart(productId, qty = 1) {
 }
 
 function buyNowDirect(productId) {
-  const cart = getCart();
-  const existing = cart.find(item => item.id === productId);
-  if (!existing) {
-    cart.push({ id: productId, qty: 1 });
-    saveCart(cart);
-  }
+  saveCart([{ id: productId, qty: 1 }]);
   window.location.href = 'checkout.html';
 }
 
