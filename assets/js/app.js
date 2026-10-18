@@ -1,7 +1,7 @@
 /**
  * HOPEKRAFT - Wooden Toys & Learning Essentials
- * Core Application Logic: Cart State, PDP Gallery, Inline Search, Checkout & Wishlist
- * Zero Popups: Pure, direct page navigation (cart.html & checkout.html)
+ * Core Application Logic: Cart State, PDP Dynamic Rendering, Checkout & Wishlist
+ * Zero Popups: Pure, direct page navigation (index -> product -> checkout)
  */
 
 // Product Catalog
@@ -9,43 +9,95 @@ const HOPEKRAFT_PRODUCTS = {
   easel: {
     id: 'easel',
     name: 'HOPEKRAFT Wooden Kids Easel',
+    tagline: '2-in-1 Magnetic Dry-Erase Whiteboard & Traditional Blackboard with Integrated Craft Storage Shelf.',
     subtitle: 'Double-Sided Whiteboard & Blackboard',
     price: 3499,
     oldPrice: 4999,
-    image: 'assets/images/product_easel.png',
-    url: 'product.html'
+    discount: '30% OFF',
+    eyebrow: 'PREMIUM PINELAND COLLECTION',
+    image: 'assets/images/easel_full.jpg',
+    url: 'product.html?id=easel',
+    thumbnails: [
+      { src: 'assets/images/easel_full.jpg', label: 'Whiteboard' },
+      { src: 'assets/images/easel_thumb_blackboard.jpg', label: 'Chalkboard' },
+      { src: 'assets/images/easel_thumb_tray.jpg', label: 'Wood Tray' },
+      { src: 'assets/images/easel_thumb_wood.jpg', label: 'Joinery' }
+    ],
+    features: [
+      { icon: '🎨', text: 'Double-Sided Board' },
+      { icon: '🌿', text: '100% Solid Beechwood' },
+      { icon: '🧲', text: 'Magnetic Whiteboard' },
+      { icon: '🎁', text: 'Free Markers & Chalk' }
+    ]
   },
   blocks: {
     id: 'blocks',
     name: 'Wooden Alphabet & Number Blocks',
+    tagline: 'Handcrafted solid beechwood alphabet and number blocks with smooth rounded corners and vivid non-toxic colors.',
     subtitle: 'Natural Beechwood Montessori Blocks',
     price: 1299,
     oldPrice: 1799,
+    discount: '28% OFF',
+    eyebrow: 'MONTESSORI EARLY LEARNING',
     image: 'assets/images/product_blocks.png',
-    url: 'product.html?id=blocks'
+    url: 'product.html?id=blocks',
+    thumbnails: [
+      { src: 'assets/images/product_blocks.png', label: 'Blocks Set' },
+      { src: 'assets/images/promo_blocks.png', label: 'Storage Bag' }
+    ],
+    features: [
+      { icon: '🔤', text: 'Full A-Z & Numbers' },
+      { icon: '🌿', text: '100% Solid Beechwood' },
+      { icon: '🖐️', text: 'Sensory Tactile Play' },
+      { icon: '🎒', text: 'Includes Cotton Bag' }
+    ]
   },
   rings: {
     id: 'rings',
     name: 'Wooden Stacking Ring Tower',
+    tagline: 'Classic rainbow wooden stacking ring tower designed to develop fine motor coordination and color recognition.',
     subtitle: 'Rainbow Polished Beechwood Ring Stack',
     price: 999,
     oldPrice: 1399,
+    discount: '29% OFF',
+    eyebrow: 'TODDLER SENSORY ESSENTIALS',
     image: 'assets/images/product_rings.png',
-    url: 'product.html?id=rings'
+    url: 'product.html?id=rings',
+    thumbnails: [
+      { src: 'assets/images/product_rings.png', label: 'Stack View' }
+    ],
+    features: [
+      { icon: '🌈', text: '7 Rainbow Ring Sizes' },
+      { icon: '🪵', text: 'Weighted Safety Base' },
+      { icon: '👶', text: 'Choke-Proof Topper' },
+      { icon: '💧', text: 'Non-Toxic Water Paint' }
+    ]
   },
   train: {
     id: 'train',
     name: 'Wooden Train Set',
+    tagline: 'Classic magnetic connector wooden toy train with steam locomotive, passenger coaches, and cargo wagons.',
     subtitle: 'Classic Magnetic Locomotive & Carriages',
     price: 1499,
     oldPrice: 1999,
+    discount: '25% OFF',
+    eyebrow: 'CREATIVE TRACK COLLECTION',
     image: 'assets/images/product_train.png',
-    url: 'product.html?id=train'
+    url: 'product.html?id=train',
+    thumbnails: [
+      { src: 'assets/images/product_train.png', label: 'Train Set' }
+    ],
+    features: [
+      { icon: '🚂', text: 'Locomotive + 3 Wagons' },
+      { icon: '🧲', text: 'Strong Magnetic Couplers' },
+      { icon: '🛤️', text: 'Universal Track Fit' },
+      { icon: '🛡️', text: 'Child-Safe Non-Toxic' }
+    ]
   }
 };
 
 // ==========================================
-// CART STATE MANAGEMENT (LocalStorage)
+// CART & ORDER STATE MANAGEMENT (LocalStorage)
 // ==========================================
 
 function getCart() {
@@ -57,7 +109,6 @@ function getCart() {
   } catch (e) {
     console.error('Error reading cart from localStorage', e);
   }
-  // Default sample cart item
   return [{ id: 'easel', qty: 1 }];
 }
 
@@ -70,23 +121,17 @@ function saveCart(cart) {
   updateCartBadge();
 }
 
-function addToCart(productId, qty = 1) {
-  const cart = getCart();
-  const existing = cart.find(item => item.id === productId);
-  if (existing) {
-    existing.qty += qty;
-  } else {
-    cart.push({ id: productId, qty: qty });
-  }
-  saveCart(cart);
-
-  const product = HOPEKRAFT_PRODUCTS[productId] || { name: 'Item' };
-  showToast(`✅ Added ${product.name} to Cart!`, `<a href="cart.html">View Cart →</a>`);
-}
-
+// Navigates directly from Product Page to Checkout Page
 function buyNowDirect(productId) {
   saveCart([{ id: productId, qty: 1 }]);
   window.location.href = 'checkout.html';
+}
+
+// Handler for PDP Buy Now buttons (reads current active product from URL or fallback)
+function onPdpBuyNowClick() {
+  const params = new URLSearchParams(window.location.search);
+  const productId = params.get('id') || 'easel';
+  buyNowDirect(productId);
 }
 
 function updateCartBadge() {
@@ -99,117 +144,89 @@ function updateCartBadge() {
 }
 
 // ==========================================
-// DEDICATED CART PAGE RENDERER
+// DYNAMIC PDP (PRODUCT DETAILS PAGE) RENDERER
 // ==========================================
 
-function renderCartPage() {
-  const container = document.getElementById('cart-items-list');
-  const emptyView = document.getElementById('cart-empty-view');
-  const gridWrap = document.getElementById('cart-grid-wrap');
-  const countLabel = document.getElementById('cart-item-count-label');
-  const subtotalElem = document.getElementById('summary-subtotal');
-  const totalElem = document.getElementById('summary-total');
+function loadProductDetailsPage() {
+  const params = new URLSearchParams(window.location.search);
+  const productId = params.get('id') || 'easel';
+  const product = HOPEKRAFT_PRODUCTS[productId] || HOPEKRAFT_PRODUCTS.easel;
 
-  if (!container) return;
+  // Update Page Title
+  document.title = `${product.name} - HOPEKRAFT Wooden Toys`;
 
-  const cart = getCart();
-
-  if (cart.length === 0) {
-    if (gridWrap) gridWrap.style.display = 'none';
-    if (emptyView) emptyView.style.display = 'block';
-    if (countLabel) countLabel.textContent = '0 items';
-    return;
+  // Update Main Image
+  const mainImg = document.getElementById('pdp-main-image');
+  if (mainImg) {
+    mainImg.src = product.image;
+    mainImg.alt = product.name;
   }
 
-  if (gridWrap) gridWrap.style.display = 'grid';
-  if (emptyView) emptyView.style.display = 'none';
+  // Update Thumbnails Grid
+  const thumbsContainer = document.querySelector('.pdp-thumbnails-grid');
+  if (thumbsContainer && product.thumbnails) {
+    thumbsContainer.innerHTML = product.thumbnails.map((t, idx) => `
+      <button class="pdp-thumb-btn ${idx === 0 ? 'active' : ''}" data-img-src="${t.src}" title="${t.label}">
+        <img src="${t.src}" alt="${t.label}">
+        <span class="thumb-caption">${t.label}</span>
+      </button>
+    `).join('');
+    setupPdpGallery();
+  }
 
-  let totalAmount = 0;
-  let totalItems = 0;
+  // Update Titles & Eyebrow
+  const eyebrowElem = document.querySelector('.pdp-category-eyebrow');
+  if (eyebrowElem) eyebrowElem.textContent = product.eyebrow;
 
-  let html = '';
-  cart.forEach(item => {
-    const product = HOPEKRAFT_PRODUCTS[item.id] || {
-      id: item.id,
-      name: 'HOPEKRAFT Toy',
-      subtitle: 'Wooden Learning Essential',
-      price: 3499,
-      image: 'assets/images/product_easel.png',
-      url: 'product.html'
-    };
+  const titleElem = document.querySelector('.pdp-product-title');
+  if (titleElem) titleElem.textContent = product.name;
 
-    const itemTotal = product.price * item.qty;
-    totalAmount += itemTotal;
-    totalItems += item.qty;
+  const taglineElem = document.querySelector('.pdp-product-tagline');
+  if (taglineElem) taglineElem.textContent = product.tagline;
 
-    html += `
-      <div class="cart-item-card" data-id="${product.id}">
-        <div class="cart-item-thumb">
-          <img src="${product.image}" alt="${product.name}">
-        </div>
-        <div class="cart-item-info">
-          <a href="${product.url}" class="cart-item-name">${product.name}</a>
-          <span class="cart-item-meta">${product.subtitle}</span>
-          <span class="cart-item-price">₹${product.price.toLocaleString('en-IN')}</span>
+  // Update Prices
+  const priceCurrent = document.querySelector('.pdp-price-current');
+  if (priceCurrent) priceCurrent.textContent = `₹${product.price.toLocaleString('en-IN')}`;
 
-          <div class="cart-item-controls">
-            <div class="qty-stepper">
-              <button class="qty-btn" onclick="changeCartQty('${product.id}', -1)" aria-label="Decrease quantity">−</button>
-              <span class="qty-input">${item.qty}</span>
-              <button class="qty-btn" onclick="changeCartQty('${product.id}', 1)" aria-label="Increase quantity">+</button>
-            </div>
-            <button class="cart-remove-btn" onclick="removeCartItem('${product.id}')">
-              🗑️ Remove
-            </button>
-          </div>
-        </div>
+  const priceOld = document.querySelector('.pdp-price-old');
+  if (priceOld) priceOld.textContent = `₹${product.oldPrice.toLocaleString('en-IN')}`;
+
+  const saveBadge = document.querySelector('.pdp-save-badge');
+  if (saveBadge) saveBadge.textContent = product.discount;
+
+  // Update Key Features
+  const featuresContainer = document.querySelector('.pdp-key-features');
+  if (featuresContainer && product.features) {
+    featuresContainer.innerHTML = product.features.map(f => `
+      <div class="key-feature-pill">
+        <span class="kf-icon">${f.icon}</span>
+        <span>${f.text}</span>
       </div>
-    `;
-  });
-
-  container.innerHTML = html;
-  if (countLabel) countLabel.textContent = `${totalItems} ${totalItems === 1 ? 'item' : 'items'}`;
-  if (subtotalElem) subtotalElem.textContent = `₹${totalAmount.toLocaleString('en-IN')}`;
-  if (totalElem) totalElem.textContent = `₹${totalAmount.toLocaleString('en-IN')}`;
-}
-
-function changeCartQty(productId, delta) {
-  let cart = getCart();
-  const item = cart.find(i => i.id === productId);
-  if (!item) return;
-
-  item.qty += delta;
-  if (item.qty <= 0) {
-    cart = cart.filter(i => i.id !== productId);
+    `).join('');
   }
 
-  saveCart(cart);
-  renderCartPage();
-}
-
-function removeCartItem(productId) {
-  let cart = getCart();
-  cart = cart.filter(i => i.id !== productId);
-  saveCart(cart);
-  renderCartPage();
-  showToast('Item removed from cart');
-}
-
-function applyCoupon() {
-  const input = document.getElementById('coupon-code-input');
-  if (!input) return;
-  const code = input.value.trim().toUpperCase();
-  if (code === 'HOPE10' || code === 'WELCOME10') {
-    showToast('🎉 Coupon Applied! 10% Extra Discount');
-    const totalElem = document.getElementById('summary-total');
-    if (totalElem) {
-      const current = parseInt(totalElem.textContent.replace(/[^\d]/g, ''), 10);
-      const discounted = Math.round(current * 0.9);
-      totalElem.textContent = `₹${discounted.toLocaleString('en-IN')}`;
-    }
-  } else if (code.length > 0) {
-    showToast('Invalid promo code. Try HOPE10');
+  // Bind Buy Now Buttons
+  const buyBtn = document.getElementById('pdp-buy-now-btn');
+  if (buyBtn) {
+    buyBtn.onclick = (e) => {
+      e.preventDefault();
+      buyNowDirect(product.id);
+    };
   }
+
+  const stickyBuyBtn = document.querySelector('.mobile-sticky-buy-bar .sticky-btn-buy');
+  if (stickyBuyBtn) {
+    stickyBuyBtn.onclick = (e) => {
+      e.preventDefault();
+      buyNowDirect(product.id);
+    };
+  }
+
+  const stickyPrice = document.querySelector('.sticky-buy-price');
+  if (stickyPrice) stickyPrice.textContent = `₹${product.price.toLocaleString('en-IN')}`;
+
+  const stickyOld = document.querySelector('.sticky-buy-old');
+  if (stickyOld) stickyOld.textContent = `₹${product.oldPrice.toLocaleString('en-IN')} (${product.discount})`;
 }
 
 // ==========================================
@@ -259,18 +276,42 @@ function submitOrder() {
   const addressInput = document.getElementById('cust-address');
   const cityInput = document.getElementById('cust-city');
 
-  const name = nameInput ? nameInput.value.trim() : 'Customer';
-  const address = addressInput ? addressInput.value.trim() : 'Flat 402, Bengaluru';
-  const city = cityInput ? cityInput.value.trim() : 'Bengaluru';
+  const name = nameInput ? nameInput.value.trim() : '';
+  const phone = phoneInput ? phoneInput.value.trim() : '';
+  const address = addressInput ? addressInput.value.trim() : '';
+  const city = cityInput && cityInput.value.trim() ? cityInput.value.trim() : 'Bengaluru';
+
+  if (!name) {
+    showToast('⚠️ Please enter your Full Name.');
+    if (nameInput) nameInput.focus();
+    return;
+  }
+  if (!phone) {
+    showToast('⚠️ Please enter your Mobile Number.');
+    if (phoneInput) phoneInput.focus();
+    return;
+  }
+  if (!address) {
+    showToast('⚠️ Please enter your Delivery Address.');
+    if (addressInput) addressInput.focus();
+    return;
+  }
 
   const paymentRadio = document.querySelector('input[name="payment-method"]:checked');
   let paymentText = 'Cash on Delivery (COD)';
-  if (paymentRadio && paymentRadio.value === 'upi') paymentText = 'Instant UPI';
-  if (paymentRadio && paymentRadio.value === 'card') paymentText = 'Card / NetBanking';
+  if (paymentRadio && paymentRadio.value === 'upi') paymentText = 'Instant UPI (GPay / PhonePe / Paytm)';
+  if (paymentRadio && paymentRadio.value === 'card') paymentText = 'Online Card / NetBanking Payment';
 
   const orderId = '#HK-' + Math.floor(10000 + Math.random() * 90000);
 
-  // Hide form, show confirmation screen
+  // Extract ordered items before clearing cart
+  const cart = getCart();
+  const itemNames = cart.map(item => {
+    const prod = HOPEKRAFT_PRODUCTS[item.id] || HOPEKRAFT_PRODUCTS.easel;
+    return `${prod.name} (Qty: ${item.qty} • ₹${(prod.price * item.qty).toLocaleString('en-IN')})`;
+  }).join(', ') || 'HOPEKRAFT Wooden Toy';
+
+  // Hide checkout form grid and show confirmation screen
   const mainGrid = document.getElementById('checkout-main-grid');
   const successScreen = document.getElementById('order-confirmed-view');
 
@@ -281,14 +322,16 @@ function submitOrder() {
     const orderIdSpan = document.getElementById('confirm-order-id');
     const addressSpan = document.getElementById('confirm-address');
     const paymentSpan = document.getElementById('confirm-payment');
+    const itemsSpan = document.getElementById('confirm-items');
 
     if (nameSpan) nameSpan.textContent = name;
     if (orderIdSpan) orderIdSpan.textContent = orderId;
     if (addressSpan) addressSpan.textContent = `${address}, ${city}`;
     if (paymentSpan) paymentSpan.textContent = paymentText;
+    if (itemsSpan) itemsSpan.textContent = itemNames;
   }
 
-  // Clear cart after successful order
+  // Clear cart after order placement
   localStorage.removeItem('hopekraft_cart');
   updateCartBadge();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -301,7 +344,6 @@ function submitOrder() {
 function setupInlineSearch() {
   const searchBar = document.getElementById('inline-search-bar');
   const headerBtn = document.getElementById('header-search-toggle');
-  const bottomBtn = document.getElementById('bottom-search-toggle');
   const closeBtn = document.getElementById('inline-search-close');
   const searchInput = document.getElementById('inline-search-input');
 
@@ -314,7 +356,6 @@ function setupInlineSearch() {
   };
 
   if (headerBtn) headerBtn.addEventListener('click', toggleSearch);
-  if (bottomBtn) bottomBtn.addEventListener('click', toggleSearch);
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
       if (searchBar) searchBar.classList.remove('active');
@@ -432,13 +473,13 @@ document.addEventListener('DOMContentLoaded', () => {
   setupPdpGallery();
   setupInlineSearch();
 
-  // Bind Add to Cart buttons
-  document.querySelectorAll('[data-add-cart]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      const productId = btn.getAttribute('data-add-cart') || 'easel';
-      addToCart(productId, 1);
-    });
-  });
+  // If on product.html, dynamically populate product details from query string
+  if (window.location.pathname.includes('product.html') || window.location.href.includes('product.html')) {
+    loadProductDetailsPage();
+  }
+
+  // If on checkout.html, dynamically populate checkout order summary
+  if (window.location.pathname.includes('checkout.html') || window.location.href.includes('checkout.html')) {
+    renderCheckoutPage();
+  }
 });

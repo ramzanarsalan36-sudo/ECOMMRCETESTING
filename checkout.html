@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <title>Express Checkout - HOPEKRAFT Wooden Toys</title>
   <meta name="description" content="Complete your purchase of handcrafted wooden toys. Fast delivery and cash on delivery available across India.">
-  <link rel="stylesheet" href="assets/css/style.css?v=4.0">
+  <link rel="stylesheet" href="assets/css/style.css?v=4.1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
@@ -17,7 +17,7 @@
     <!-- Top Sticky Header -->
     <header class="app-header">
       <div class="header-left">
-        <a href="cart.html" class="icon-btn" aria-label="Back to Cart">
+        <a href="product.html" class="icon-btn" aria-label="Back to Product">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
@@ -57,8 +57,8 @@
             Securely complete your wooden toy order
           </p>
         </div>
-        <a href="cart.html" class="back-link">
-          ← Back to Cart
+        <a href="product.html" class="back-link">
+          ← Back to Product
         </a>
       </div>
 
@@ -204,6 +204,7 @@
         </div>
 
         <div style="background: #FAF7F0; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 16px; margin: 20px 0; text-align: left; font-size: 0.85rem; line-height: 1.6;">
+          <p>🧸 <strong>Order Items:</strong> <span id="confirm-items">HOPEKRAFT Wooden Toy</span></p>
           <p>📦 <strong>Delivery Address:</strong> <span id="confirm-address">Flat 402, Green Meadows Apartment, Bengaluru</span></p>
           <p>🚚 <strong>Estimated Delivery:</strong> 2-3 Business Days</p>
           <p>💵 <strong>Payment Method:</strong> <span id="confirm-payment">Cash on Delivery (COD)</span></p>
@@ -247,7 +248,7 @@
   <!-- Non-intrusive Toast Notice -->
   <div id="toast-notice" class="toast-notice"></div>
 
-  <script src="assets/js/app.js?v=4.0"></script>
+  <script src="assets/js/app.js?v=4.1"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       renderCheckoutPage();

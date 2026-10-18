@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <title>HOPEKRAFT Wooden Kids Easel - Double-Sided Whiteboard & Blackboard</title>
   <meta name="description" content="HOPEKRAFT Wooden Kids Easel. Two sides of creativity with whiteboard, blackboard and wooden storage tray. 30% OFF today.">
-  <link rel="stylesheet" href="assets/css/style.css?v=4.0">
+  <link rel="stylesheet" href="assets/css/style.css?v=4.1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
@@ -137,7 +137,7 @@
 
           <!-- Single Professional "Buy Now" Action (No Add to Cart) -->
           <div class="pdp-actions-row">
-            <a href="checkout.html" id="pdp-buy-now-btn" class="btn-buy-now-large" onclick="buyNowDirect('easel')">
+            <a href="checkout.html" id="pdp-buy-now-btn" class="btn-buy-now-large" onclick="onPdpBuyNowClick(); return false;">
               <span>Buy Now →</span>
             </a>
           </div>
@@ -223,7 +223,7 @@
       <span class="sticky-buy-old">₹4,999 (30% OFF)</span>
     </div>
     <div class="sticky-buy-btns">
-      <a href="checkout.html" class="sticky-buy-btn sticky-btn-buy" onclick="buyNowDirect('easel')">
+      <a href="checkout.html" class="sticky-buy-btn sticky-btn-buy" onclick="onPdpBuyNowClick(); return false;">
         Buy Now →
       </a>
     </div>
@@ -231,6 +231,6 @@
 
   <div id="toast-notice" class="toast-notice"></div>
 
-  <script src="assets/js/app.js?v=4.0"></script>
+  <script src="assets/js/app.js?v=4.1"></script>
 </body>
 </html>
