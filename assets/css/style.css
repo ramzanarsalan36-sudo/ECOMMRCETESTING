@@ -241,6 +241,13 @@ button, a, input, select {
   padding: 0;
 }
 
+.hero-picture {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 .hero-banner-img {
   width: 100%;
   height: auto;
@@ -300,23 +307,41 @@ button, a, input, select {
   font-size: 0.95rem;
 }
 
+/* Desktop PC Media Queries - Fits Frame Correctly Without Mobile Changes */
+@media (min-width: 768px) {
+  .hero-banner-img {
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+}
+
 @media (min-width: 992px) {
   .hero-home {
-    padding: 16px 0 0 0;
+    padding: 0;
+    margin: 0;
+    width: 100%;
   }
   .hero-banner-wrap {
-    max-width: 860px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
   }
   .hero-banner-card {
-    border-radius: 16px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .hero-banner-img {
+    aspect-ratio: 16 / 9;
+    max-height: 560px;
+    object-fit: cover;
+    width: 100%;
   }
   .hero-trust-bar-wrap {
-    max-width: 860px;
-    margin: 12px auto 16px auto;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--color-border);
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    border-radius: 0;
   }
 }
 
