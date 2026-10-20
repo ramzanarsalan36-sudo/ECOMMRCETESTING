@@ -7,28 +7,31 @@
 
 :root {
   /* LIGHT WARM LINEN PALETTE - HOPEKRAFT Authentic Brand */
-  --color-bg: #FBF9F4;                    /* Clean warm ivory cream linen */
+  /* LUXURY HANDCRAFTED BEECHWOOD & MONTESSORI THEME */
+  --color-bg: #FAF7F2;                    /* Warm natural oatmeal linen */
   --color-surface: #FFFFFF;               /* Crisp pure white container */
-  --color-surface-hover: #F8F5EE;         /* Elevated surface on hover */
-  --color-surface-subtle: #F5F1E8;        /* Soft sand contrast section */
-  --color-primary: #0077C8;               /* Vibrant Royal Blue from logo and hero banner */
-  --color-primary-hover: #0060A3;
-  --color-primary-light: rgba(0, 119, 200, 0.08);
-  --color-primary-subtle: rgba(0, 119, 200, 0.04);
-  --color-accent: #FFAA00;                /* Radiant Sunny Gold from logo and hero */
-  --color-accent-hover: #E59800;
-  --color-accent-light: rgba(255, 170, 0, 0.12);
-  --color-gold: #FFAA00;
-  --color-terracotta: #E8604C;            /* Coral terracotta */
-  --color-terracotta-dark: #C94634;
-  --color-mint: #2E8B57;                  /* Sea green */
-  --color-text-main: #1A3026;             /* High contrast deep forest pine espresso */
-  --color-text-dark: #0D1C15;
-  --color-text-body: #4A5851;             /* Soft warm readable taupe/charcoal */
-  --color-text-muted: #7A8981;            /* Muted slate */
-  --color-border: #E8E3D8;                /* Warm soft linen border */
-  --color-border-light: #F2EFE8;
-  --color-border-accent: rgba(0, 119, 200, 0.25);
+  --color-surface-hover: #F8F4EC;         /* Elevated surface on hover */
+  --color-surface-subtle: #F3ECE1;        /* Soft beechwood sand */
+  --color-primary: #8C4320;               /* Rich Warm Terracotta Beechwood */
+  --color-primary-hover: #733416;
+  --color-primary-dark: #26140B;          /* Deep roasted espresso beechwood */
+  --color-primary-light: rgba(140, 67, 32, 0.08);
+  --color-primary-subtle: rgba(140, 67, 32, 0.04);
+  --color-accent: #E0821D;                /* Warm Sunny Honey Amber */
+  --color-accent-hover: #C66E14;
+  --color-accent-light: rgba(224, 130, 29, 0.12);
+  --color-gold: #E0821D;
+  --color-terracotta: #8C4320;            /* Warm handcrafted terracotta */
+  --color-terracotta-dark: #733416;
+  --color-mint: #2C6E49;                  /* Montessori forest sage green */
+  --color-forest: #2C6E49;
+  --color-text-main: #1D120C;             /* Deep rich espresso coffee */
+  --color-text-dark: #120A06;
+  --color-text-body: #483A32;             /* Comfortable warm charcoal taupe */
+  --color-text-muted: #857469;            /* Soft wood-toned muted slate */
+  --color-border: #E8DFD3;                /* Refined warm linen border */
+  --color-border-light: #F2ECE2;
+  --color-border-accent: rgba(140, 67, 32, 0.25);
   
   --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-heading: 'Fredoka', 'Plus Jakarta Sans', sans-serif;
@@ -96,9 +99,9 @@ button, a, input, select {
 
 @media (min-width: 992px) {
   .app-container {
-    max-width: 1160px;
+    max-width: 480px;
     margin: 0 auto;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 0 50px rgba(58, 38, 26, 0.09);
   }
 }
 
