@@ -1861,8 +1861,225 @@ body {
   }
 }
 
-/* 1. HERO SECTION: 2-COLUMN SPLIT WITH 1:1 IMAGE */
-/* 1:0.7 WIDE HERO SHOWCASE BANNER (REFINED PROPORTIONS WITH INTEGRATED ARTWORK TEXT) */
+/* =============================================
+   1. HERO SECTION: GRADIENT BG + PRODUCT IMAGE CAROUSEL
+   ============================================= */
+
+.hero-gradient-section {
+  width: 100%;
+  padding: 0;
+  margin: 0 0 16px 0;
+  box-sizing: border-box;
+}
+
+.hero-gradient-bg {
+  width: 100%;
+  background: linear-gradient(135deg, #FFF8F0 0%, #FDECD2 30%, #F5D5B0 60%, #E8C49E 100%);
+  border-radius: 0 0 18px 18px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 8px 30px rgba(139, 90, 43, 0.12);
+}
+
+/* Carousel Container */
+.hero-carousel-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-carousel-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hero-carousel-slide {
+  min-width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-carousel-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.5s ease;
+}
+
+.hero-carousel-slide:hover .hero-carousel-img {
+  transform: scale(1.03);
+}
+
+/* Navigation Arrows */
+.hero-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #4A3020;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  transition: all 0.25s ease;
+}
+
+.hero-carousel-arrow:hover {
+  background: #FFFFFF;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.hero-carousel-arrow-left {
+  left: 10px;
+}
+
+.hero-carousel-arrow-right {
+  right: 10px;
+}
+
+@media (min-width: 768px) {
+  .hero-carousel-arrow {
+    width: 44px;
+    height: 44px;
+  }
+  .hero-carousel-arrow-left {
+    left: 20px;
+  }
+  .hero-carousel-arrow-right {
+    right: 20px;
+  }
+}
+
+/* Bottom Info Bar - Overlaid on carousel */
+.hero-bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 14px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.45) 100%);
+}
+
+.hero-bottom-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hero-brand-tag {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.hero-tagline {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.5px;
+}
+
+/* Dots */
+.hero-carousel-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hero-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s ease;
+}
+
+.hero-dot-active {
+  background: #FFFFFF;
+  width: 22px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.hero-dot:hover:not(.hero-dot-active) {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* Shop Now Button */
+.hero-shop-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #8C4320 0%, #5C2D0E 100%);
+  color: #FFFFFF !important;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(92, 45, 14, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.hero-shop-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(140, 67, 32, 0.45);
+  background: #8C4320;
+}
+
+@media (min-width: 768px) {
+  .hero-bottom-bar {
+    padding: 12px 30px 18px;
+  }
+  .hero-brand-tag {
+    font-size: 1rem;
+  }
+  .hero-tagline {
+    font-size: 0.78rem;
+  }
+  .hero-shop-btn {
+    font-size: 0.88rem;
+    padding: 10px 24px;
+  }
+  .hero-dot {
+    width: 10px;
+    height: 10px;
+  }
+  .hero-dot-active {
+    width: 28px;
+  }
+}
+
+
 .hero-banner-square-wrap {
   width: 100%;
   padding: 0;

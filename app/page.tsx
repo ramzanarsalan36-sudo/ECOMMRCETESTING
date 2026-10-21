@@ -1,15 +1,60 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { PRODUCT_LIST } from '@/lib/products';
-import { Star, ShieldCheck, Truck, RefreshCw, CheckCircle2, Heart, Award, ArrowRight } from 'lucide-react';
+import { Star, ShieldCheck, Truck, RefreshCw, CheckCircle2, Heart, Award, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAge, setSelectedAge] = useState<string>('all');
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Hero carousel product images (professional full-width banners)
+  const heroSlides = [
+    {
+      image: '/assets/images/hero_slide_1.jpg',
+      alt: 'Hopekraft Wooden Educational Products Box - Less Screen Time More Play Time More Learning',
+    },
+    {
+      image: '/assets/images/hero_slide_2.jpg',
+      alt: 'Happy Kids Playing with Hopekraft Wooden Alphabet Blocks - Play Learn Grow',
+    },
+    {
+      image: '/assets/images/hero_slide_3.jpg',
+      alt: 'Hopekraft Alphabet Blocks Box - Hindi Urdu Marathi Arabic Multi-Language Learning',
+    },
+    {
+      image: '/assets/images/hero_slide_4.jpg',
+      alt: 'Smiling Child with Hopekraft ABC Wooden Blocks - Educational Montessori Toys',
+    },
+    {
+      image: '/assets/images/hero_slide_5.jpg',
+      alt: 'Hopekraft Hindi Devanagari Alphabet Wooden Blocks Complete Set with Barakhadi',
+    },
+  ];
+
+  // Auto-advance carousel
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [heroSlides.length]);
+
+  const goToSlide = useCallback((index: number) => {
+    setCurrentSlide(index);
+  }, []);
+
+  const nextSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+  }, [heroSlides.length]);
+
+  const prevSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+  }, [heroSlides.length]);
 
   const filteredProducts = PRODUCT_LIST.filter(product => {
     if (!searchQuery) return true;
@@ -52,16 +97,60 @@ export default function HomePage() {
       <Header onSearch={setSearchQuery} />
 
       <main style={{ paddingBottom: '30px' }}>
-        {/* 1. HERO SECTION: 1:0.7 WIDE BANNER WITH INTEGRATED ARTWORK TYPOGRAPHY (NO OVERLAID BUTTON) */}
-        <section className="hero-banner-square-wrap" aria-label="HOPEKRAFT Handcrafted Wooden Collection">
-          <Link href="#bestsellers" className="hero-banner-square-link" title="Explore HOPEKRAFT Collection">
-            <img
-              src="/assets/images/hero_brand_showcase.jpg"
-              alt="HOPEKRAFT - Little Hands. Big Imagination. Handcrafted Montessori Toys"
-              className="hero-banner-square-img"
-              loading="eager"
-            />
-          </Link>
+        {/* 1. HERO SECTION: Gradient BG with Real Product Image Carousel */}
+        <section className="hero-gradient-section" aria-label="HOPEKRAFT Handcrafted Wooden Collection">
+          <div className="hero-gradient-bg">
+            {/* Product Image Carousel */}
+            <div className="hero-carousel-container">
+              <div
+                className="hero-carousel-track"
+                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+              >
+                {heroSlides.map((slide, index) => (
+                  <div className="hero-carousel-slide" key={index}>
+                    <img
+                      src={slide.image}
+                      alt={slide.alt}
+                      className="hero-carousel-img"
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Navigation Arrows */}
+              <button className="hero-carousel-arrow hero-carousel-arrow-left" onClick={prevSlide} aria-label="Previous slide">
+                <ChevronLeft size={20} />
+              </button>
+              <button className="hero-carousel-arrow hero-carousel-arrow-right" onClick={nextSlide} aria-label="Next slide">
+                <ChevronRight size={20} />
+              </button>
+            </div>
+
+            {/* Bottom Info Bar */}
+            <div className="hero-bottom-bar">
+              <div className="hero-bottom-text">
+                <span className="hero-brand-tag">HOPEKRAFT</span>
+                <span className="hero-tagline">Play • Learn • Grow</span>
+              </div>
+
+              {/* Dots Navigation */}
+              <div className="hero-carousel-dots">
+                {heroSlides.map((_, index) => (
+                  <button
+                    key={index}
+                    className={`hero-dot ${index === currentSlide ? 'hero-dot-active' : ''}`}
+                    onClick={() => goToSlide(index)}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+
+              <Link href="#bestsellers" className="hero-shop-btn">
+                Shop Now <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
         </section>
 
         {/* 2. MOVING INFINITE TRUST MARQUEE */}
