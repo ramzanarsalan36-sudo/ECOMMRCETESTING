@@ -158,11 +158,18 @@ export function validateAdminCredentials(user: string, pass: string): boolean {
     return false;
   }
 
-  const expectedUser = process.env.ADMIN_USERNAME || DEFAULT_ADMIN_USER;
+  const expectedUser = (process.env.ADMIN_USERNAME || DEFAULT_ADMIN_USER).toLowerCase();
   const expectedPass = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASS;
 
-  // 1. Standard configured admin credentials (e.g. admin / admin123)
-  if (cleanUser === expectedUser && cleanPass === expectedPass) {
+  const allowedUsernames = [
+    expectedUser,
+    'admin',
+    'hopekraft',
+    'hopekraft@gmail.com'
+  ];
+
+  // 1. Standard configured admin credentials (allows admin, hopekraft@gmail.com, etc.)
+  if (allowedUsernames.includes(cleanUser.toLowerCase()) && cleanPass === expectedPass) {
     return true;
   }
 
