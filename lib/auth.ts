@@ -226,17 +226,6 @@ export async function signInWithFirebaseAuth(
         fbMsg === 'EMAIL_NOT_FOUND' ||
         fbMsg === 'INVALID_PASSWORD'
       ) {
-        // Check if user is logging in using local Master credentials fallback
-        if (checkFallbackLocalAdmin(cleanId, cleanPass)) {
-          return {
-            success: true,
-            user: {
-              uid: MASTER_ADMIN_UID,
-              email: `${DEFAULT_ADMIN_USER}@hopekraft.in`,
-              displayName: 'MasterAdmin'
-            }
-          };
-        }
         return { success: false, error: 'Invalid email or password.' };
       }
       if (fbMsg === 'TOO_MANY_ATTEMPTS_TRY_LATER') {
@@ -251,38 +240,20 @@ export async function signInWithFirebaseAuth(
           error: 'This account has been disabled in Firebase.'
         };
       }
+      return { success: false, error: data.error.message || 'Firebase authentication failed.' };
     }
   } catch (err: any) {
     console.error('[Firebase Auth] Sign in error:', err);
-  }
-
-  // 2. Fallback check for local admin credentials (Master Admin UID or admin user)
-  if (checkFallbackLocalAdmin(cleanId, cleanPass)) {
-    return {
-      success: true,
-      user: {
-        uid: MASTER_ADMIN_UID,
-        email: 'admin@hopekraft.in',
-        displayName: 'MasterAdmin'
-      }
-    };
+    return { success: false, error: 'Firebase authentication service error. Please try again.' };
   }
 
   return { success: false, error: 'Authentication failed. Please check your credentials.' };
 }
 
-function checkFallbackLocalAdmin(cleanId: string, cleanPass: string): boolean {
-  const expectedPass = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASS;
-  const isMasterUser =
-    cleanId.toLowerCase() === DEFAULT_ADMIN_USER.toLowerCase() ||
-    cleanId === MASTER_ADMIN_UID ||
-    AUTHORIZED_ADMIN_UIDS.includes(cleanId);
-  return isMasterUser && (cleanPass === expectedPass || cleanPass === 'admin123');
-}
-
 /**
- * Validate Admin ID & Password strictly (legacy helper)
+ * Validate Admin ID & Password strictly (legacy helper - strict Firebase only)
  */
 export function validateAdminCredentials(user: string, pass: string): boolean {
-  return checkFallbackLocalAdmin(user.trim(), pass ? pass.trim() : '');
+  // Local fallback disabled: authentication is exclusively handled by Firebase Auth
+  return false;
 }
