@@ -161,21 +161,33 @@ export function validateAdminCredentials(user: string, pass: string): boolean {
   const expectedUser = (process.env.ADMIN_USERNAME || DEFAULT_ADMIN_USER).toLowerCase();
   const expectedPass = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASS;
 
+  const userLower = cleanUser.toLowerCase();
+  const userPrefix = userLower.split('@')[0];
+
   const allowedUsernames = [
     expectedUser,
     'admin',
+    'admin@gmail.com',
     'hopekraft',
     'hopekraft@gmail.com',
     'kcca315tmqyp22oeu8vbech4vrq2'
   ];
 
-  // 1. Standard configured admin credentials (allows admin, hopekraft@gmail.com, etc.)
-  if (allowedUsernames.includes(cleanUser.toLowerCase()) && cleanPass === expectedPass) {
+  // 1. Standard configured admin credentials (allows admin, admin@gmail.com, hopekraft@gmail.com, etc.)
+  if (
+    (allowedUsernames.includes(userLower) || allowedUsernames.includes(userPrefix) || userLower.includes('admin')) &&
+    cleanPass === expectedPass
+  ) {
     return true;
   }
 
   // 2. Or login using Master UID as username with valid admin password
-  if ((cleanUser === MASTER_ADMIN_UID || AUTHORIZED_ADMIN_UIDS.includes(cleanUser)) && cleanPass === expectedPass) {
+  if (
+    (cleanUser === MASTER_ADMIN_UID ||
+      AUTHORIZED_ADMIN_UIDS.includes(cleanUser) ||
+      userLower === MASTER_ADMIN_UID.toLowerCase()) &&
+    cleanPass === expectedPass
+  ) {
     return true;
   }
 
