@@ -68,10 +68,10 @@ export default function AdminLoginPage() {
         )}
 
         <form onSubmit={handleLogin} style={{ textAlign: 'left' }}>
-          {/* Firebase Admin UID */}
+          {/* Admin ID / Master Key */}
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#374151', marginBottom: '4px' }}>
-              Firebase Admin UID
+              Admin ID / Master Key
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -80,9 +80,10 @@ export default function AdminLoginPage() {
                 style={{ width: '100%', padding: '9px 12px 9px 34px', borderRadius: '8px', border: '1.5px solid #E2E8F0', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="kcca315tMqYP22OeU8VBECh4VRq2"
+                placeholder="Enter private admin key"
                 required
-                autoComplete="username"
+                autoComplete="off"
+                spellCheck={false}
               />
               <User size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
             </div>
