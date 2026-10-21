@@ -145,7 +145,7 @@ export async function verifyAdminToken(token: string | undefined | null): Promis
  * Authorized Master Admin Firebase UIDs
  */
 export const MASTER_ADMIN_UID = 'kcca315tMqYP22OeU8VBECh4VRq2';
-export const AUTHORIZED_ADMIN_UIDS = ['kcca315tMqYP22OeU8VBECh4VRq2', 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3'];
+export const AUTHORIZED_ADMIN_UIDS = ['kcca315tMqYP22OeU8VBECh4VRq2'];
 
 /**
  * Validate Admin ID & Password strictly

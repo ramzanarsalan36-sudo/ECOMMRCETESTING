@@ -1,24 +1,24 @@
 {
   "rules": {
     "orders": {
-      ".read": "auth != null && (auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2' || auth.uid === 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3')",
+      ".read": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2'",
       "$orderId": {
-        ".read": "auth != null && (auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2' || auth.uid === 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3')",
-        ".write": "auth != null && (auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2' || auth.uid === 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3') || (!data.exists() && newData.exists())",
+        ".read": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2'",
+        ".write": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2' || (!data.exists() && newData.exists())",
         ".validate": "newData.hasChildren(['id', 'customer', 'items', 'total', 'paymentMethod'])"
       }
     },
     "products": {
       ".read": true,
-      ".write": "auth != null && (auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2' || auth.uid === 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3')"
+      ".write": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2'"
     },
     "settings": {
-      ".read": "auth != null && (auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2' || auth.uid === 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3')",
-      ".write": "auth != null && (auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2' || auth.uid === 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3')"
+      ".read": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2'",
+      ".write": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2'"
     },
     "$other": {
-      ".read": "auth != null && (auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2' || auth.uid === 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3')",
-      ".write": "auth != null && (auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2' || auth.uid === 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3')"
+      ".read": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2'",
+      ".write": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2'"
     }
   }
 }
