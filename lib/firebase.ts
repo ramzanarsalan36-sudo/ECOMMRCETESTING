@@ -23,19 +23,53 @@ export const firebaseConfig = {
 
 export const FIREBASE_DB_URL = firebaseConfig.databaseURL.replace(/\/$/, '');
 
-function getFirebaseUrl(path: string): string {
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+let globalRuntimeAuthToken: string | null = null;
+
+export function setRuntimeAuthToken(token: string | null) {
+  globalRuntimeAuthToken = token;
+}
+
+export function getRuntimeAuthToken(): string | null {
+  return globalRuntimeAuthToken;
+}
+
+export async function resolveAuthToken(explicitToken?: string): Promise<string | undefined> {
+  if (explicitToken) return explicitToken;
+
   const secret = process.env.FIREBASE_DATABASE_SECRET;
-  const authQuery = secret ? `?auth=${encodeURIComponent(secret)}` : '';
+  if (secret && !secret.includes('YOUR_FIREBASE') && secret.trim().length > 0) {
+    return secret.trim();
+  }
+
+  if (globalRuntimeAuthToken) {
+    return globalRuntimeAuthToken;
+  }
+
+  try {
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    const fbToken = cookieStore.get('hopekraft_fb_id_token')?.value;
+    if (fbToken) return fbToken;
+  } catch {
+    // Outside of Next.js request scope
+  }
+
+  return undefined;
+}
+
+export async function getFirebaseUrl(path: string, tokenOverride?: string): Promise<string> {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const token = await resolveAuthToken(tokenOverride);
+  const authQuery = token ? `?auth=${encodeURIComponent(token)}` : '';
   return `${FIREBASE_DB_URL}${cleanPath}.json${authQuery}`;
 }
 
 /**
  * Perform a GET request to Firebase Realtime Database
  */
-export async function firebaseGet<T>(path: string): Promise<T | null> {
+export async function firebaseGet<T>(path: string, tokenOverride?: string): Promise<T | null> {
   try {
-    const url = getFirebaseUrl(path);
+    const url = await getFirebaseUrl(path, tokenOverride);
     const res = await fetch(url, {
       cache: 'no-store'
     });
@@ -53,9 +87,9 @@ export async function firebaseGet<T>(path: string): Promise<T | null> {
 /**
  * Perform a PUT (create/replace) request to Firebase Realtime Database
  */
-export async function firebasePut<T>(path: string, data: T): Promise<T | null> {
+export async function firebasePut<T>(path: string, data: T, tokenOverride?: string): Promise<T | null> {
   try {
-    const url = getFirebaseUrl(path);
+    const url = await getFirebaseUrl(path, tokenOverride);
     const res = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -76,9 +110,9 @@ export async function firebasePut<T>(path: string, data: T): Promise<T | null> {
 /**
  * Perform a PATCH (partial update) request to Firebase Realtime Database
  */
-export async function firebasePatch<T>(path: string, patch: Partial<T>): Promise<T | null> {
+export async function firebasePatch<T>(path: string, patch: Partial<T>, tokenOverride?: string): Promise<T | null> {
   try {
-    const url = getFirebaseUrl(path);
+    const url = await getFirebaseUrl(path, tokenOverride);
     const res = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -99,9 +133,9 @@ export async function firebasePatch<T>(path: string, patch: Partial<T>): Promise
 /**
  * Perform a DELETE request to Firebase Realtime Database
  */
-export async function firebaseDelete(path: string): Promise<boolean> {
+export async function firebaseDelete(path: string, tokenOverride?: string): Promise<boolean> {
   try {
-    const url = getFirebaseUrl(path);
+    const url = await getFirebaseUrl(path, tokenOverride);
     const res = await fetch(url, {
       method: 'DELETE',
       cache: 'no-store'

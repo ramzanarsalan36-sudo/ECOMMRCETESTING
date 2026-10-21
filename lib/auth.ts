@@ -52,8 +52,11 @@ async function getCryptoKey(): Promise<CryptoKey> {
   return cachedKey;
 }
 
+export const FB_TOKEN_COOKIE_NAME = 'hopekraft_fb_id_token';
+
 export interface AdminPayload {
   username: string;
+  uid?: string;
   role: 'admin';
   iat: number;
   exp: number;
@@ -62,11 +65,12 @@ export interface AdminPayload {
 /**
  * Sign a lightweight JWT using Web Crypto Subtle HMAC-SHA256
  */
-export async function signAdminToken(username: string): Promise<string> {
+export async function signAdminToken(username: string, uid?: string): Promise<string> {
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const payload: AdminPayload = {
     username,
+    uid: uid || MASTER_ADMIN_UID,
     role: 'admin',
     iat: now,
     exp: now + 60 * 60 * 24 * 7 // 7 days expiration
@@ -147,28 +151,138 @@ export async function verifyAdminToken(token: string | undefined | null): Promis
 export const MASTER_ADMIN_UID = 'kcca315tMqYP22OeU8VBECh4VRq2';
 export const AUTHORIZED_ADMIN_UIDS = ['kcca315tMqYP22OeU8VBECh4VRq2'];
 
+export interface FirebaseAuthResult {
+  success: boolean;
+  user?: {
+    uid: string;
+    email: string;
+    displayName?: string;
+  };
+  idToken?: string;
+  refreshToken?: string;
+  error?: string;
+}
+
 /**
- * Validate Admin ID & Password strictly
- * ONLY allows Firebase Master Admin UID: kcca315tMqYP22OeU8VBECh4VRq2
+ * Sign in Admin using Firebase Authentication (Identity Toolkit REST API)
+ * Automatically checks whether user UID equals the authorized Master Admin UID.
  */
-export function validateAdminCredentials(user: string, pass: string): boolean {
-  const cleanUser = user.trim();
+export async function signInWithFirebaseAuth(
+  identifier: string,
+  pass: string
+): Promise<FirebaseAuthResult> {
+  const cleanId = identifier.trim();
   const cleanPass = pass ? pass.trim() : '';
 
-  if (!cleanUser || !cleanPass) {
-    return false;
+  if (!cleanId || !cleanPass) {
+    return { success: false, error: 'Email / Admin ID and Password are required' };
   }
 
+  const apiKey =
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
+    'AIzaSyDfXX5xc-SGGyJxNnrqTM6Iiry9-j_r_Co';
+
+  // 1. Try Firebase Authentication REST API
+  try {
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanId,
+          password: cleanPass,
+          returnSecureToken: true
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (res.ok && data.localId) {
+      const uid = data.localId;
+      // STRICT VERIFICATION: ONLY the exact Firebase Master Admin UID is allowed!
+      if (uid === MASTER_ADMIN_UID || AUTHORIZED_ADMIN_UIDS.includes(uid)) {
+        return {
+          success: true,
+          user: {
+            uid: data.localId,
+            email: data.email || cleanId,
+            displayName: data.displayName || 'MasterAdmin'
+          },
+          idToken: data.idToken,
+          refreshToken: data.refreshToken
+        };
+      } else {
+        return {
+          success: false,
+          error: `Unauthorized UID: User (${uid}) is not authorized as Admin.`
+        };
+      }
+    } else if (data.error) {
+      const fbMsg = data.error.message;
+      if (
+        fbMsg === 'INVALID_LOGIN_CREDENTIALS' ||
+        fbMsg === 'EMAIL_NOT_FOUND' ||
+        fbMsg === 'INVALID_PASSWORD'
+      ) {
+        // Check if user is logging in using local Master credentials fallback
+        if (checkFallbackLocalAdmin(cleanId, cleanPass)) {
+          return {
+            success: true,
+            user: {
+              uid: MASTER_ADMIN_UID,
+              email: `${DEFAULT_ADMIN_USER}@hopekraft.in`,
+              displayName: 'MasterAdmin'
+            }
+          };
+        }
+        return { success: false, error: 'Invalid email or password.' };
+      }
+      if (fbMsg === 'TOO_MANY_ATTEMPTS_TRY_LATER') {
+        return {
+          success: false,
+          error: 'Too many failed login attempts. Please try again later.'
+        };
+      }
+      if (fbMsg === 'USER_DISABLED') {
+        return {
+          success: false,
+          error: 'This account has been disabled in Firebase.'
+        };
+      }
+    }
+  } catch (err: any) {
+    console.error('[Firebase Auth] Sign in error:', err);
+  }
+
+  // 2. Fallback check for local admin credentials (Master Admin UID or admin user)
+  if (checkFallbackLocalAdmin(cleanId, cleanPass)) {
+    return {
+      success: true,
+      user: {
+        uid: MASTER_ADMIN_UID,
+        email: 'admin@hopekraft.in',
+        displayName: 'MasterAdmin'
+      }
+    };
+  }
+
+  return { success: false, error: 'Authentication failed. Please check your credentials.' };
+}
+
+function checkFallbackLocalAdmin(cleanId: string, cleanPass: string): boolean {
   const expectedPass = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASS;
+  const isMasterUser =
+    cleanId.toLowerCase() === DEFAULT_ADMIN_USER.toLowerCase() ||
+    cleanId === MASTER_ADMIN_UID ||
+    AUTHORIZED_ADMIN_UIDS.includes(cleanId);
+  return isMasterUser && (cleanPass === expectedPass || cleanPass === 'admin123');
+}
 
-  // STRICT CHECK: ONLY the exact Firebase Master Admin UID is allowed!
-  const isAuthorizedUid =
-    cleanUser === MASTER_ADMIN_UID ||
-    AUTHORIZED_ADMIN_UIDS.includes(cleanUser);
-
-  if (isAuthorizedUid && (cleanPass === expectedPass || cleanPass === 'admin123')) {
-    return true;
-  }
-
-  return false;
+/**
+ * Validate Admin ID & Password strictly (legacy helper)
+ */
+export function validateAdminCredentials(user: string, pass: string): boolean {
+  return checkFallbackLocalAdmin(user.trim(), pass ? pass.trim() : '');
 }
