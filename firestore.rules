@@ -4,7 +4,7 @@ service cloud.firestore {
     
     // Master Admin UID Check
     function isMasterAdmin() {
-      return request.auth != null && request.auth.uid == 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3';
+      return request.auth != null && (request.auth.uid == 'kcca315tMqYP22OeU8VBECh4VRq2' || request.auth.uid == 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3');
     }
 
     // Orders Collection

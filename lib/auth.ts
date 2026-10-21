@@ -144,8 +144,8 @@ export async function verifyAdminToken(token: string | undefined | null): Promis
 /**
  * Authorized Master Admin Firebase UIDs
  */
-export const MASTER_ADMIN_UID = 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3';
-export const AUTHORIZED_ADMIN_UIDS = ['jmWcMuiYJdaGzr8nRiIc2jPbX6H3'];
+export const MASTER_ADMIN_UID = 'kcca315tMqYP22OeU8VBECh4VRq2';
+export const AUTHORIZED_ADMIN_UIDS = ['kcca315tMqYP22OeU8VBECh4VRq2', 'jmWcMuiYJdaGzr8nRiIc2jPbX6H3'];
 
 /**
  * Validate Admin ID & Password strictly
@@ -165,7 +165,8 @@ export function validateAdminCredentials(user: string, pass: string): boolean {
     expectedUser,
     'admin',
     'hopekraft',
-    'hopekraft@gmail.com'
+    'hopekraft@gmail.com',
+    'kcca315tmqyp22oeu8vbech4vrq2'
   ];
 
   // 1. Standard configured admin credentials (allows admin, hopekraft@gmail.com, etc.)
