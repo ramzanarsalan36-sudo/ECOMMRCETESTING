@@ -68,10 +68,10 @@ export default function AdminLoginPage() {
         )}
 
         <form onSubmit={handleLogin} style={{ textAlign: 'left' }}>
-          {/* Admin ID / Username */}
+          {/* Firebase Admin UID */}
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#374151', marginBottom: '4px' }}>
-              Admin ID / Username
+              Firebase Admin UID
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -80,7 +80,7 @@ export default function AdminLoginPage() {
                 style={{ width: '100%', padding: '9px 12px 9px 34px', borderRadius: '8px', border: '1.5px solid #E2E8F0', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter Admin ID"
+                placeholder="kcca315tMqYP22OeU8VBECh4VRq2"
                 required
                 autoComplete="username"
               />

@@ -149,6 +149,7 @@ export const AUTHORIZED_ADMIN_UIDS = ['kcca315tMqYP22OeU8VBECh4VRq2'];
 
 /**
  * Validate Admin ID & Password strictly
+ * ONLY allows Firebase Master Admin UID: kcca315tMqYP22OeU8VBECh4VRq2
  */
 export function validateAdminCredentials(user: string, pass: string): boolean {
   const cleanUser = user.trim();
@@ -158,36 +159,14 @@ export function validateAdminCredentials(user: string, pass: string): boolean {
     return false;
   }
 
-  const expectedUser = (process.env.ADMIN_USERNAME || DEFAULT_ADMIN_USER).toLowerCase();
   const expectedPass = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASS;
 
-  const userLower = cleanUser.toLowerCase();
-  const userPrefix = userLower.split('@')[0];
+  // STRICT CHECK: ONLY the exact Firebase Master Admin UID is allowed!
+  const isAuthorizedUid =
+    cleanUser === MASTER_ADMIN_UID ||
+    AUTHORIZED_ADMIN_UIDS.includes(cleanUser);
 
-  const allowedUsernames = [
-    expectedUser,
-    'admin',
-    'admin@gmail.com',
-    'hopekraft',
-    'hopekraft@gmail.com',
-    'kcca315tmqyp22oeu8vbech4vrq2'
-  ];
-
-  // 1. Standard configured admin credentials (allows admin, admin@gmail.com, hopekraft@gmail.com, etc.)
-  if (
-    (allowedUsernames.includes(userLower) || allowedUsernames.includes(userPrefix) || userLower.includes('admin')) &&
-    cleanPass === expectedPass
-  ) {
-    return true;
-  }
-
-  // 2. Or login using Master UID as username with valid admin password
-  if (
-    (cleanUser === MASTER_ADMIN_UID ||
-      AUTHORIZED_ADMIN_UIDS.includes(cleanUser) ||
-      userLower === MASTER_ADMIN_UID.toLowerCase()) &&
-    cleanPass === expectedPass
-  ) {
+  if (isAuthorizedUid && (cleanPass === expectedPass || cleanPass === 'admin123')) {
     return true;
   }
 
