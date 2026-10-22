@@ -110,7 +110,7 @@ function CheckoutContent() {
   };
 
   return (
-    <div className="app-container storefront-shell" style={{ maxWidth: '520px', margin: '0 auto', background: '#FAF7F2', minHeight: '100vh', paddingBottom: '40px' }}>
+    <div className="app-container storefront-shell checkout-shell">
       {/* Top Header with Back to Product */}
       <Header hideSearch backHref={`/product/${directProduct.id}`} />
 
@@ -171,387 +171,410 @@ function CheckoutContent() {
         }
       `}} />
 
-      <main style={{ padding: '10px 14px' }}>
-        {/* Compact 1-Screen Order Box */}
-        <div style={{ background: '#FFFFFF', borderRadius: '16px', border: '1.5px solid #EAE3D6', padding: '16px', boxShadow: '0 4px 18px rgba(45, 30, 20, 0.05)' }}>
-          
-          {/* Item Mini Card */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#FBF9F5', padding: '10px 12px', borderRadius: '10px', border: '1px solid #EFEAE1', marginBottom: '12px' }}>
-            <img 
-              src={directProduct.image} 
-              alt={directProduct.name} 
-              style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #E5E0D8' }} 
-            />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#2B1B17', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {directProduct.name}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '2px' }}>
-                <span style={{ fontSize: '0.98rem', fontWeight: 900, color: '#8C4320' }}>
-                  ₹{directProduct.price.toLocaleString('en-IN')}
-                </span>
-                <span style={{ fontSize: '0.72rem', color: '#887B70', textDecoration: 'line-through' }}>
-                  ₹{directProduct.oldPrice.toLocaleString('en-IN')}
-                </span>
-                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#2E7D32', background: '#E8F5E9', padding: '1px 5px', borderRadius: '3px' }}>
-                  Free Delivery
-                </span>
+      <main style={{ padding: '14px 12px 40px' }}>
+        <form onSubmit={handlePlaceOrder}>
+          {/* MOBILE ONLY TOP: Item Mini Card & Choice Banner */}
+          <div className="checkout-mobile-only" style={{ marginBottom: '14px' }}>
+            <div style={{ background: '#FFFFFF', borderRadius: '16px', border: '1.5px solid #EAE3D6', padding: '14px', boxShadow: '0 4px 18px rgba(45, 30, 20, 0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#FBF9F5', padding: '10px 12px', borderRadius: '10px', border: '1px solid #EFEAE1' }}>
+                <img 
+                  src={directProduct.image} 
+                  alt={directProduct.name} 
+                  style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #E5E0D8' }} 
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#2B1B17', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {directProduct.name}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '2px' }}>
+                    <span style={{ fontSize: '0.98rem', fontWeight: 900, color: '#8C4320' }}>
+                      ₹{directProduct.price.toLocaleString('en-IN')}
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: '#887B70', textDecoration: 'line-through' }}>
+                      ₹{directProduct.oldPrice.toLocaleString('en-IN')}
+                    </span>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#2E7D32', background: '#E8F5E9', padding: '1px 5px', borderRadius: '3px' }}>
+                      Free Delivery
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* ACTIVE CHOICE NOTIFICATION & SWITCH BANNER */}
-          {paymentMethod === 'online' ? (
-            <div style={{
-              background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
-              border: '1.5px solid #10B981',
-              borderRadius: '10px',
-              padding: '9px 12px',
-              marginBottom: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '10px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.25rem' }}>⚡</span>
-                <div>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#065F46', lineHeight: 1.2 }}>
-                    Online Payment Selected • ₹100 OFF Applied!
-                  </div>
-                  <div style={{ fontSize: '0.68rem', color: '#047857' }}>
-                    Paying ₹{effectiveTotal.toLocaleString('en-IN')} instead of ₹{directProduct.price.toLocaleString('en-IN')}
-                  </div>
+          {/* FLIPKART & AMAZON DESKTOP 2-COLUMN GRID */}
+          <div className="checkout-main-grid">
+            {/* LEFT COLUMN: Delivery Address & Payment Selector */}
+            <div className="checkout-form-col">
+              {/* Card 1: Express Doorstep Delivery */}
+              <div style={{ background: '#FFFFFF', borderRadius: '16px', border: '1.5px solid #EAE3D6', padding: '18px 20px', boxShadow: '0 4px 18px rgba(45, 30, 20, 0.05)', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid #F0ECE4', paddingBottom: '10px' }}>
+                  <h1 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#2B1B17', margin: 0 }}>
+                    1. Express Doorstep Delivery
+                  </h1>
+                  <span style={{ fontSize: '0.72rem', color: '#2E7D32', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <Lock size={13} /> Secure Checkout
+                  </span>
                 </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('cod')}
-                style={{
-                  background: '#FFFFFF',
-                  border: '1.5px solid #059669',
-                  color: '#065F46',
-                  borderRadius: '6px',
-                  padding: '4px 8px',
-                  fontSize: '0.68rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
-                }}
-              >
-                Switch to COD
-              </button>
-            </div>
-          ) : (
-            <div style={{
-              background: '#FAF7F2',
-              border: '1.5px solid #D5CEBE',
-              borderRadius: '10px',
-              padding: '9px 12px',
-              marginBottom: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '10px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.25rem' }}>💵</span>
-                <div>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#382314', lineHeight: 1.2 }}>
-                    Cash on Delivery Selected
+
+                {formError && (
+                  <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', padding: '8px 12px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 600, marginBottom: '12px' }}>
+                    ⚠️ {formError}
                   </div>
-                  <div style={{ fontSize: '0.68rem', color: '#6A5F56' }}>
-                    Pay ₹{directProduct.price.toLocaleString('en-IN')} in cash at doorstep
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('online')}
-                style={{
-                  background: '#15803D',
-                  border: 'none',
-                  color: '#FFFFFF',
-                  borderRadius: '6px',
-                  padding: '5px 9px',
-                  fontSize: '0.68rem',
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  boxShadow: '0 2px 6px rgba(21, 128, 61, 0.3)'
-                }}
-              >
-                Save ₹100 Online ⚡
-              </button>
-            </div>
-          )}
+                )}
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #F0ECE4', paddingBottom: '8px' }}>
-            <h1 style={{ fontSize: '1rem', fontWeight: 800, color: '#2B1B17', margin: 0 }}>
-              Express Doorstep Delivery
-            </h1>
-            <span style={{ fontSize: '0.7rem', color: '#2E7D32', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-              <Lock size={12} /> Secure
-            </span>
-          </div>
-
-          {formError && (
-            <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#991B1B', padding: '8px 12px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 600, marginBottom: '12px' }}>
-              ⚠️ {formError}
-            </div>
-          )}
-
-          {/* Compact Input Form */}
-          <form onSubmit={handlePlaceOrder}>
-            {/* Row 1: Name & Phone (2-col) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#382314', marginBottom: '3px' }}>
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Rahul Sharma"
-                  style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #D5CEBE', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#382314', marginBottom: '3px' }}>
-                  Mobile Number *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  maxLength={10}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="10-digit number"
-                  style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #D5CEBE', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA', boxSizing: 'border-box' }}
-                />
-              </div>
-            </div>
-
-            {/* Row 2: Complete Address */}
-            <div style={{ marginBottom: '10px' }}>
-              <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#382314', marginBottom: '3px' }}>
-                Delivery Address (Flat / House No., Landmark) *
-              </label>
-              <textarea
-                rows={2}
-                required
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="House #12, 3rd Main, Indiranagar"
-                style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #D5CEBE', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA', boxSizing: 'border-box', resize: 'none' }}
-              />
-            </div>
-
-            {/* Row 3: City & Pincode (2-col) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#382314', marginBottom: '3px' }}>
-                  City *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g. Bangalore"
-                  style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #D5CEBE', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#382314', marginBottom: '3px' }}>
-                  Pincode (6-Digits) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  value={pincode}
-                  onChange={(e) => setPincode(e.target.value)}
-                  placeholder="560038"
-                  style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #D5CEBE', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA', boxSizing: 'border-box' }}
-                />
-              </div>
-            </div>
-
-            {/* INTERACTIVE PAYMENT METHOD CARDS (Instant Switching Allowed) */}
-            <div style={{ background: '#FAF7F2', borderRadius: '12px', padding: '10px 12px', border: '1.5px solid #EAE2D5', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#382314' }}>
-                  Choose Payment Method:
-                </span>
-                <span style={{ fontSize: '0.66rem', color: '#6A5F56' }}>
-                  (Click any option to switch)
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {/* Option 1: Pay Online (₹100 Instant Discount) */}
-                <div
-                  onClick={() => setPaymentMethod('online')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 12px',
-                    borderRadius: '9px',
-                    border: paymentMethod === 'online' ? '2px solid #16A34A' : '1px solid #D5CEBE',
-                    background: paymentMethod === 'online' ? '#F0FDF4' : '#FFFFFF',
-                    cursor: 'pointer',
-                    boxShadow: paymentMethod === 'online' ? '0 2px 8px rgba(22, 163, 74, 0.15)' : 'none',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Row 1: Name & Phone (2-col) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#382314', marginBottom: '3px' }}>
+                      Full Name *
+                    </label>
                     <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="online"
-                      checked={paymentMethod === 'online'}
-                      onChange={() => setPaymentMethod('online')}
-                      style={{ accentColor: '#16A34A', width: '16px', height: '16px', cursor: 'pointer' }}
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Rahul Sharma"
+                      style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #D5CEBE', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA', boxSizing: 'border-box' }}
                     />
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#14532D' }}>
-                          ⚡ Pay Online (UPI / Card / NetBanking)
-                        </span>
-                        <span style={{ fontSize: '0.62rem', fontWeight: 900, background: '#16A34A', color: '#FFFFFF', padding: '1px 6px', borderRadius: '4px' }}>
-                          SAVE ₹100
-                        </span>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#382314', marginBottom: '3px' }}>
+                      Mobile Number *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      maxLength={10}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="10-digit number"
+                      style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #D5CEBE', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Row 2: Complete Address */}
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#382314', marginBottom: '3px' }}>
+                    Delivery Address (Flat / House No., Landmark) *
+                  </label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="House #12, 3rd Main, Indiranagar"
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #D5CEBE', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA', boxSizing: 'border-box', resize: 'none' }}
+                  />
+                </div>
+
+                {/* Row 3: City & Pincode (2-col) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#382314', marginBottom: '3px' }}>
+                      City *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="e.g. Bangalore"
+                      style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #D5CEBE', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#382314', marginBottom: '3px' }}>
+                      Pincode (6-Digits) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      value={pincode}
+                      onChange={(e) => setPincode(e.target.value)}
+                      placeholder="560038"
+                      style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #D5CEBE', fontSize: '0.85rem', outline: 'none', background: '#FAFAFA', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Interactive Payment Selection */}
+              <div style={{ background: '#FFFFFF', borderRadius: '16px', border: '1.5px solid #EAE3D6', padding: '18px 20px', boxShadow: '0 4px 18px rgba(45, 30, 20, 0.05)', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #F0ECE4', paddingBottom: '10px' }}>
+                  <h2 style={{ fontSize: '1.02rem', fontWeight: 800, color: '#2B1B17', margin: 0 }}>
+                    2. Choose Payment Method
+                  </h2>
+                  <span style={{ fontSize: '0.68rem', color: '#6A5F56' }}>
+                    (Click any option to switch)
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {/* Option 1: Pay Online (₹100 Instant Discount) */}
+                  <div
+                    onClick={() => setPaymentMethod('online')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      border: paymentMethod === 'online' ? '2px solid #16A34A' : '1px solid #D5CEBE',
+                      background: paymentMethod === 'online' ? '#F0FDF4' : '#FFFFFF',
+                      cursor: 'pointer',
+                      boxShadow: paymentMethod === 'online' ? '0 2px 8px rgba(22, 163, 74, 0.15)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="online"
+                        checked={paymentMethod === 'online'}
+                        onChange={() => setPaymentMethod('online')}
+                        style={{ accentColor: '#16A34A', width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.86rem', fontWeight: 800, color: '#14532D' }}>
+                            ⚡ Pay Online (UPI / Card / NetBanking)
+                          </span>
+                          <span style={{ fontSize: '0.62rem', fontWeight: 900, background: '#16A34A', color: '#FFFFFF', padding: '1px 6px', borderRadius: '4px' }}>
+                            SAVE ₹100
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: '#166534', marginTop: '1px' }}>
+                          Instant automated verification • Zero handling fee
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.68rem', color: '#166534', marginTop: '1px' }}>
-                        Instant automated verification • Zero handling fee
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.98rem', fontWeight: 900, color: '#15803D' }}>
+                        ₹{(directProduct.price - 100).toLocaleString('en-IN')}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#887B70', textDecoration: 'line-through' }}>
+                        ₹{directProduct.price.toLocaleString('en-IN')}
                       </div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#15803D' }}>
-                      ₹{(directProduct.price - 100).toLocaleString('en-IN')}
+
+                  {/* Option 2: Cash on Delivery (COD) */}
+                  <div
+                    onClick={() => setPaymentMethod('cod')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      border: paymentMethod === 'cod' ? '2px solid #8C4320' : '1px solid #D5CEBE',
+                      background: paymentMethod === 'cod' ? '#FDF8F3' : '#FFFFFF',
+                      cursor: 'pointer',
+                      boxShadow: paymentMethod === 'cod' ? '0 2px 8px rgba(140, 67, 32, 0.12)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="cod"
+                        checked={paymentMethod === 'cod'}
+                        onChange={() => setPaymentMethod('cod')}
+                        style={{ accentColor: '#8C4320', width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <div>
+                        <span style={{ fontSize: '0.86rem', fontWeight: 800, color: '#2B1B17' }}>
+                          💵 Cash on Delivery (COD)
+                        </span>
+                        <div style={{ fontSize: '0.7rem', color: '#6A5F56', marginTop: '1px' }}>
+                          Inspect parcel and pay in cash at doorstep
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.66rem', color: '#887B70', textDecoration: 'line-through' }}>
+                    <div style={{ fontSize: '0.98rem', fontWeight: 900, color: '#2B1B17' }}>
                       ₹{directProduct.price.toLocaleString('en-IN')}
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                {/* Option 2: Cash on Delivery (COD) */}
-                <div
-                  onClick={() => setPaymentMethod('cod')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 12px',
-                    borderRadius: '9px',
-                    border: paymentMethod === 'cod' ? '2px solid #8C4320' : '1px solid #D5CEBE',
-                    background: paymentMethod === 'cod' ? '#FDF8F3' : '#FFFFFF',
-                    cursor: 'pointer',
-                    boxShadow: paymentMethod === 'cod' ? '0 2px 8px rgba(140, 67, 32, 0.12)' : 'none',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="cod"
-                      checked={paymentMethod === 'cod'}
-                      onChange={() => setPaymentMethod('cod')}
-                      style={{ accentColor: '#8C4320', width: '16px', height: '16px', cursor: 'pointer' }}
-                    />
-                    <div>
-                      <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#2B1B17' }}>
-                        💵 Cash on Delivery (COD)
+            {/* RIGHT COLUMN: Order Summary & Place Order (Desktop Sticky / Mobile Stacked) */}
+            <div className="checkout-summary-col">
+              {/* DESKTOP SUMMARY BOX */}
+              <div className="checkout-desktop-only" style={{ background: '#FFFFFF', borderRadius: '16px', border: '1.5px solid #EAE3D6', padding: '20px', boxShadow: '0 4px 18px rgba(45, 30, 20, 0.05)' }}>
+                <h2 style={{ fontSize: '1rem', fontWeight: 800, color: '#2B1B17', margin: '0 0 14px', borderBottom: '1px solid #F0ECE4', paddingBottom: '10px' }}>
+                  Order Summary
+                </h2>
+
+                {/* Item Thumbnail & Title */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: '#FBF9F5', padding: '10px 12px', borderRadius: '10px', border: '1px solid #EFEAE1', marginBottom: '14px' }}>
+                  <img 
+                    src={directProduct.image} 
+                    alt={directProduct.name} 
+                    style={{ width: '56px', height: '56px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #E5E0D8' }} 
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#2B1B17', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {directProduct.name}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '3px' }}>
+                      <span style={{ fontSize: '1rem', fontWeight: 900, color: '#8C4320' }}>
+                        ₹{directProduct.price.toLocaleString('en-IN')}
                       </span>
-                      <div style={{ fontSize: '0.68rem', color: '#6A5F56', marginTop: '1px' }}>
-                        Inspect parcel and pay in cash at doorstep
-                      </div>
+                      <span style={{ fontSize: '0.72rem', color: '#887B70', textDecoration: 'line-through' }}>
+                        ₹{directProduct.oldPrice.toLocaleString('en-IN')}
+                      </span>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#2E7D32', background: '#E8F5E9', padding: '1px 5px', borderRadius: '3px' }}>
+                        Free Delivery
+                      </span>
                     </div>
                   </div>
-                  <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#2B1B17' }}>
-                    ₹{directProduct.price.toLocaleString('en-IN')}
+                </div>
+
+                {/* Price Breakdown */}
+                <div style={{ background: '#F8F6F1', borderRadius: '10px', padding: '12px 14px', border: '1px solid #EAE3D6', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#554A40', marginBottom: '6px' }}>
+                    <span>Item Subtotal:</span>
+                    <span style={{ fontWeight: 700 }}>₹{directProduct.price.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#2E7D32', marginBottom: '6px' }}>
+                    <span>Express Courier Shipping:</span>
+                    <span style={{ fontWeight: 700 }}>FREE (₹0)</span>
+                  </div>
+                  {paymentMethod === 'online' && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#15803D', fontWeight: 800, marginBottom: '6px' }}>
+                      <span>⚡ Instant Online Discount:</span>
+                      <span>- ₹100</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px dashed #D5CEBE', marginTop: '6px' }}>
+                    <span style={{ fontSize: '0.9rem', color: '#2B1B17', fontWeight: 800 }}>Total Payable Amount:</span>
+                    <span style={{ fontSize: '1.35rem', fontWeight: 900, color: paymentMethod === 'online' ? '#15803D' : '#8C4320' }}>
+                      ₹{effectiveTotal.toLocaleString('en-IN')}
+                    </span>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* ORDER PRICE BREAKDOWN ROW */}
-            <div style={{ background: '#F8F6F1', borderRadius: '10px', padding: '10px 12px', border: '1px solid #EAE3D6', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', color: '#554A40', marginBottom: '4px' }}>
-                <span>Item Subtotal:</span>
-                <span style={{ fontWeight: 700 }}>₹{directProduct.price.toLocaleString('en-IN')}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', color: '#2E7D32', marginBottom: '4px' }}>
-                <span>Express Courier Shipping:</span>
-                <span style={{ fontWeight: 700 }}>FREE (₹0)</span>
-              </div>
-              {paymentMethod === 'online' && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', color: '#15803D', fontWeight: 800, marginBottom: '4px' }}>
-                  <span>⚡ Instant Online Discount:</span>
-                  <span>- ₹100</span>
+                {/* Confirm Order Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={paymentMethod === 'online' ? 'hk-green-checkout-btn' : 'hk-brown-checkout-btn'}
+                  style={{
+                    width: '100%',
+                    minHeight: '52px',
+                    padding: '14px 20px',
+                    borderRadius: '12px',
+                    fontSize: '0.98rem',
+                    fontWeight: 900,
+                    letterSpacing: '0.3px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s ease',
+                    opacity: loading ? 0.75 : 1
+                  }}
+                >
+                  {loading ? (
+                    <span>⏳ Placing Order...</span>
+                  ) : paymentMethod === 'online' ? (
+                    <>
+                      <Zap size={20} fill="#FFD700" color="#FFD700" />
+                      <span>PAY ONLINE (₹100 OFF) - ₹{effectiveTotal.toLocaleString('en-IN')} ➔</span>
+                    </>
+                  ) : (
+                    <>
+                      <Package size={20} color="#FFAA00" />
+                      <span>CONFIRM ORDER (COD) - ₹{effectiveTotal.toLocaleString('en-IN')} ➔</span>
+                    </>
+                  )}
+                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.7rem', color: '#776E65', marginTop: '12px' }}>
+                  <ShieldCheck size={15} color="#2E7D32" />
+                  <span>100% Verified Purchase • Instant SMS Tracking Included</span>
                 </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '6px', borderTop: '1px dashed #D5CEBE', marginTop: '4px' }}>
-                <span style={{ fontSize: '0.84rem', color: '#2B1B17', fontWeight: 800 }}>Total Payable Amount:</span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 900, color: paymentMethod === 'online' ? '#15803D' : '#8C4320' }}>
-                  ₹{effectiveTotal.toLocaleString('en-IN')}
-                </span>
+              </div>
+
+              {/* MOBILE ONLY BOTTOM: Price Breakdown & Button */}
+              <div className="checkout-mobile-only" style={{ background: '#FFFFFF', borderRadius: '16px', border: '1.5px solid #EAE3D6', padding: '16px', boxShadow: '0 4px 18px rgba(45, 30, 20, 0.05)' }}>
+                <div style={{ background: '#F8F6F1', borderRadius: '10px', padding: '10px 12px', border: '1px solid #EAE3D6', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', color: '#554A40', marginBottom: '4px' }}>
+                    <span>Item Subtotal:</span>
+                    <span style={{ fontWeight: 700 }}>₹{directProduct.price.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', color: '#2E7D32', marginBottom: '4px' }}>
+                    <span>Express Courier Shipping:</span>
+                    <span style={{ fontWeight: 700 }}>FREE (₹0)</span>
+                  </div>
+                  {paymentMethod === 'online' && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.76rem', color: '#15803D', fontWeight: 800, marginBottom: '4px' }}>
+                      <span>⚡ Instant Online Discount:</span>
+                      <span>- ₹100</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '6px', borderTop: '1px dashed #D5CEBE', marginTop: '4px' }}>
+                    <span style={{ fontSize: '0.84rem', color: '#2B1B17', fontWeight: 800 }}>Total Payable Amount:</span>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 900, color: paymentMethod === 'online' ? '#15803D' : '#8C4320' }}>
+                      ₹{effectiveTotal.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={paymentMethod === 'online' ? 'hk-green-checkout-btn' : 'hk-brown-checkout-btn'}
+                  style={{
+                    width: '100%',
+                    minHeight: '52px',
+                    padding: '14px 20px',
+                    borderRadius: '12px',
+                    fontSize: '0.98rem',
+                    fontWeight: 900,
+                    letterSpacing: '0.3px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s ease',
+                    opacity: loading ? 0.75 : 1
+                  }}
+                >
+                  {loading ? (
+                    <span>⏳ Placing Order...</span>
+                  ) : paymentMethod === 'online' ? (
+                    <>
+                      <Zap size={20} fill="#FFD700" color="#FFD700" />
+                      <span>PAY ONLINE (₹100 OFF) - ₹{effectiveTotal.toLocaleString('en-IN')} ➔</span>
+                    </>
+                  ) : (
+                    <>
+                      <Package size={20} color="#FFAA00" />
+                      <span>CONFIRM ORDER (COD) - ₹{effectiveTotal.toLocaleString('en-IN')} ➔</span>
+                    </>
+                  )}
+                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.68rem', color: '#776E65', marginTop: '10px' }}>
+                  <ShieldCheck size={14} color="#2E7D32" />
+                  <span>100% Verified Purchase • Instant SMS Tracking Included</span>
+                </div>
               </div>
             </div>
-
-            {/* DYNAMIC CONFIRM BUTTON (Adapts text, color and splash to chosen method) */}
-            <button
-              type="submit"
-              disabled={loading}
-              className={paymentMethod === 'online' ? 'hk-green-checkout-btn' : 'hk-brown-checkout-btn'}
-              style={{
-                width: '100%',
-                minHeight: '52px',
-                padding: '14px 20px',
-                borderRadius: '12px',
-                fontSize: '0.98rem',
-                fontWeight: 900,
-                letterSpacing: '0.3px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: 'all 0.2s ease',
-                opacity: loading ? 0.75 : 1
-              }}
-            >
-              {loading ? (
-                <span>⏳ Placing Order...</span>
-              ) : paymentMethod === 'online' ? (
-                <>
-                  <Zap size={20} fill="#FFD700" color="#FFD700" />
-                  <span>PAY ONLINE (₹100 OFF) - ₹{effectiveTotal.toLocaleString('en-IN')} ➔</span>
-                </>
-              ) : (
-                <>
-                  <Package size={20} color="#FFAA00" />
-                  <span>CONFIRM ORDER (COD) - ₹{effectiveTotal.toLocaleString('en-IN')} ➔</span>
-                </>
-              )}
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.68rem', color: '#776E65', marginTop: '10px' }}>
-              <ShieldCheck size={14} color="#2E7D32" />
-              <span>100% Verified Purchase • Instant SMS Tracking Included</span>
-            </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </main>
 
       <Footer />

@@ -196,10 +196,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const defaultCartContext: CartContextType = {
+  cart: [],
+  addToCart: () => {},
+  removeFromCart: () => {},
+  updateQty: () => {},
+  clearCart: () => {},
+  totalCount: 0,
+  subtotal: 0,
+  discount: 0,
+  couponCode: '',
+  applyCoupon: () => false,
+  removeCoupon: () => {},
+  total: 0,
+  wishlist: [],
+  toggleWishlist: () => false,
+  isInWishlist: () => false,
+  toastMessage: null,
+  showToast: () => {}
+};
+
 export function useCart() {
   const context = useContext(CartContext);
   if (!context) {
-    throw new Error('useCart must be used within a CartProvider');
+    return defaultCartContext;
   }
   return context;
 }

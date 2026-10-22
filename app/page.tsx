@@ -92,93 +92,144 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="app-container storefront-shell">
+    <div className="app-container storefront-shell home-desktop-shell">
       {/* Top Sticky Header with Official Logo */}
       <Header onSearch={setSearchQuery} />
 
       <main style={{ paddingBottom: '30px' }}>
-        {/* 1. HERO SECTION: Gradient BG with Real Product Image Carousel */}
-        <section className="hero-gradient-section" aria-label="HOPEKRAFT Handcrafted Wooden Collection">
+        {/* 1. HERO SECTION: Full-Width Rich Desktop Hero & Pure Mobile Carousel */}
+        <section className="hero-gradient-section" aria-label="HOPEKRAFT Featured Collection">
           <div className="hero-gradient-bg">
-            {/* Product Image Carousel */}
-            <div className="hero-carousel-container">
-              <div
-                className="hero-carousel-track"
-                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-              >
-                {heroSlides.map((slide, index) => (
-                  <div className="hero-carousel-slide" key={index}>
-                    <img
-                      src={slide.image}
-                      alt={slide.alt}
-                      className="hero-carousel-img"
-                      loading={index === 0 ? 'eager' : 'lazy'}
-                    />
+            <div className="hero-responsive-layout">
+              {/* PC Desktop Intro Column (Hidden on Mobile) */}
+              <div className="hero-desktop-content">
+                <div className="hero-human-handwrite-tag">
+                  ✨ Handcrafted with love for little hands &amp; big imaginations
+                </div>
+                <h1 className="hero-desktop-heading">
+                  Simple, screen-free wooden toys your kids will truly love.
+                </h1>
+                <p className="hero-desktop-description">
+                  In a world full of glowing screens and fragile plastic, HOPEKRAFT brings back the warmth of pure tactile childhood. Naturally solid European beechwood, silky-smooth rounded edges, and heirloom-quality toys made to be touched, stacked, and passed down.
+                </p>
+
+                {/* Handcrafted Workshop Highlights */}
+                <div className="hero-human-checklist">
+                  <div className="hero-human-check-item">
+                    <span className="hero-check-bullet">🪵</span>
+                    <span><strong>Pure European Beechwood:</strong> 100% natural, solid &amp; splinter-free</span>
                   </div>
-                ))}
+                  <div className="hero-human-check-item">
+                    <span className="hero-check-bullet">🎨</span>
+                    <span><strong>Child-Safe Finishes:</strong> Non-toxic, BIS approved &amp; water-based colours</span>
+                  </div>
+                  <div className="hero-human-check-item">
+                    <span className="hero-check-bullet">🇮🇳</span>
+                    <span><strong>Loved Across India:</strong> Multi-language blocks with Free Doorstep COD</span>
+                  </div>
+                </div>
+
+                <div className="hero-desktop-cta-row">
+                  <Link href="#bestsellers" className="hero-desktop-primary-btn">
+                    Explore Wooden Toys <ArrowRight size={15} />
+                  </Link>
+                  <Link href="#reviews" className="hero-desktop-secondary-btn">
+                    ⭐ 5,000+ Parent Stories
+                  </Link>
+                </div>
               </div>
 
-              {/* Navigation Arrows */}
-              <button className="hero-carousel-arrow hero-carousel-arrow-left" onClick={prevSlide} aria-label="Previous slide">
-                <ChevronLeft size={20} />
-              </button>
-              <button className="hero-carousel-arrow hero-carousel-arrow-right" onClick={nextSlide} aria-label="Next slide">
-                <ChevronRight size={20} />
-              </button>
-            </div>
+              {/* 1:1 Photo Carousel Container */}
+              <div className="hero-carousel-wrapper">
+                <div className="hero-carousel-container">
+                  <div
+                    className="hero-carousel-track"
+                    style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                  >
+                    {heroSlides.map((slide, index) => (
+                      <div className="hero-carousel-slide" key={index}>
+                        <img
+                          src={slide.image}
+                          alt={slide.alt}
+                          className="hero-carousel-img"
+                          loading={index === 0 ? 'eager' : 'lazy'}
+                        />
+                      </div>
+                    ))}
+                  </div>
 
-            {/* Bottom Info Bar */}
-            <div className="hero-bottom-bar">
-              <div className="hero-bottom-text">
-                <span className="hero-brand-tag">HOPEKRAFT</span>
-                <span className="hero-tagline">Play • Learn • Grow</span>
+                  {/* Navigation Arrows */}
+                  <button className="hero-carousel-arrow hero-carousel-arrow-left" onClick={prevSlide} aria-label="Previous slide">
+                    <ChevronLeft size={22} />
+                  </button>
+                  <button className="hero-carousel-arrow hero-carousel-arrow-right" onClick={nextSlide} aria-label="Next slide">
+                    <ChevronRight size={22} />
+                  </button>
+
+                  {/* Bottom Info Bar Overlay */}
+                  <div className="hero-bottom-bar">
+                    <div className="hero-bottom-text">
+                      <span className="hero-brand-tag">HOPEKRAFT</span>
+                      <span className="hero-tagline">Play • Learn • Grow</span>
+                    </div>
+
+                    {/* Dots Navigation */}
+                    <div className="hero-carousel-dots">
+                      {heroSlides.map((_, index) => (
+                        <button
+                          key={index}
+                          className={`hero-dot ${index === currentSlide ? 'hero-dot-active' : ''}`}
+                          onClick={() => goToSlide(index)}
+                          aria-label={`Go to slide ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+
+                    <Link href="#bestsellers" className="hero-shop-btn">
+                      Shop Now <ArrowRight size={14} />
+                    </Link>
+                  </div>
+                </div>
               </div>
-
-              {/* Dots Navigation */}
-              <div className="hero-carousel-dots">
-                {heroSlides.map((_, index) => (
-                  <button
-                    key={index}
-                    className={`hero-dot ${index === currentSlide ? 'hero-dot-active' : ''}`}
-                    onClick={() => goToSlide(index)}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
-                ))}
-              </div>
-
-              <Link href="#bestsellers" className="hero-shop-btn">
-                Shop Now <ArrowRight size={14} />
-              </Link>
             </div>
           </div>
         </section>
 
-        {/* 2. MOVING INFINITE TRUST MARQUEE */}
-        <div style={{ background: '#FAF7F0', borderTop: '1px solid #EFEAE1', borderBottom: '1px solid #EFEAE1', padding: '8px 0', overflow: 'hidden', whiteSpace: 'nowrap', marginBottom: '16px' }}>
-          <div style={{ display: 'inline-flex', gap: '20px', animation: 'marquee 25s linear infinite', fontSize: '0.74rem', fontWeight: 700, color: '#4A3B32' }}>
-            <span>🌿 100% Solid European Beechwood</span>
-            <span>•</span>
-            <span>🛡️ Certified Non-Toxic &amp; BIS Approved</span>
-            <span>•</span>
-            <span>🚚 Free Express Shipping India-Wide</span>
-            <span>•</span>
-            <span>💵 Cash on Delivery (COD) Available</span>
-            <span>•</span>
-            <span>🔄 7-Day Hassle-Free Returns</span>
-            <span>•</span>
-            <span>⭐ 4.8/5 Rated by 5,000+ Indian Parents</span>
-            <span>•</span>
-            <span>🌿 100% Solid European Beechwood</span>
-            <span>•</span>
-            <span>🛡️ Certified Non-Toxic &amp; BIS Approved</span>
-            <span>•</span>
-            <span>🚚 Free Express Shipping India-Wide</span>
-            <span>•</span>
-            <span>💵 Cash on Delivery (COD) Available</span>
+        {/* 2. AUTO MOVING CONTINUOUS TRUST MARQUEE */}
+        <div className="trust-marquee-container" aria-label="Authenticity and Trust Guarantees">
+          <div className="trust-marquee-track">
+            <div className="trust-marquee-group">
+              <span>🌿 100% Solid European Beechwood</span>
+              <span className="marquee-dot">•</span>
+              <span>🛡️ Certified Non-Toxic &amp; BIS Approved</span>
+              <span className="marquee-dot">•</span>
+              <span>🚚 Free Express Shipping India-Wide</span>
+              <span className="marquee-dot">•</span>
+              <span>💵 Cash on Delivery (COD) Available</span>
+              <span className="marquee-dot">•</span>
+              <span>🔄 7-Day Hassle-Free Returns</span>
+              <span className="marquee-dot">•</span>
+              <span>⭐ 4.8/5 Rated by 5,000+ Indian Parents</span>
+              <span className="marquee-dot">•</span>
+            </div>
+            <div className="trust-marquee-group" aria-hidden="true">
+              <span>🌿 100% Solid European Beechwood</span>
+              <span className="marquee-dot">•</span>
+              <span>🛡️ Certified Non-Toxic &amp; BIS Approved</span>
+              <span className="marquee-dot">•</span>
+              <span>🚚 Free Express Shipping India-Wide</span>
+              <span className="marquee-dot">•</span>
+              <span>💵 Cash on Delivery (COD) Available</span>
+              <span className="marquee-dot">•</span>
+              <span>🔄 7-Day Hassle-Free Returns</span>
+              <span className="marquee-dot">•</span>
+              <span>⭐ 4.8/5 Rated by 5,000+ Indian Parents</span>
+              <span className="marquee-dot">•</span>
+            </div>
           </div>
         </div>
 
-        {/* 2. BEST SELLERS / 8 HANDCRAFTED WOODEN PRODUCTS */}
+        {/* 3. BEST SELLERS / 8 HANDCRAFTED WOODEN PRODUCTS */}
         <section id="bestsellers" className="bestsellers-section-wrap" aria-label="All Wooden Essentials">
           <div className="bestsellers-header-split">
             <div>
@@ -186,7 +237,7 @@ export default function HomePage() {
               <p className="bestsellers-sub">Loved by kids. Trusted for learning &amp; play.</p>
             </div>
 
-            <span style={{ fontSize: '0.74rem', color: '#8D7B71', fontWeight: 700 }}>
+            <span style={{ fontSize: '0.74rem', color: '#8D7B71', fontWeight: 500 }}>
               {filteredProducts.length} items
             </span>
           </div>
@@ -221,7 +272,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 5. PROMO BANNER (CREATIVE PLAY & DIY) */}
+        {/* 4. PROMO BANNER (CREATIVE PLAY & DIY) */}
         <section className="mockup-promo-card-wrap" aria-label="Promotional Spotlight">
           <div className="mockup-promo-card-gradient">
             <div>
@@ -251,8 +302,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 6. WHY CHOOSE HOPEKRAFT? */}
-        <section className="why-choose-section-wrap" aria-label="Why Choose HOPEKRAFT">
+        {/* 5. WHY CHOOSE HOPEKRAFT? */}
+        <section id="why-hopekraft" className="why-choose-section-wrap" aria-label="Why Choose HOPEKRAFT">
           <h2 className="section-ornament-title">
             <span style={{ color: '#C29A78' }}>⊰</span> Why Choose HOPEKRAFT? <span style={{ color: '#C29A78' }}>⊱</span>
           </h2>
@@ -284,36 +335,36 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 7. NEW SECTION: PARENT LOVE & VERIFIED SOCIAL PROOF */}
-        <section style={{ padding: '0 12px', marginTop: '22px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#C29A78', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+        {/* 6. PARENT LOVE & VERIFIED SOCIAL PROOF */}
+        <section id="reviews" className="parent-reviews-section" style={{ padding: '0 14px', marginTop: '22px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#A06E47', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
               LOVED BY 5,000+ FAMILIES
             </span>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#2B1B17', margin: '2px 0 0' }}>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#2B1B17', margin: '3px 0 0' }}>
               What Indian Parents Are Saying
             </h2>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="reviews-grid-responsive">
             {parentReviews.map((r, i) => (
-              <div key={i} style={{ background: '#FFFFFF', borderRadius: '10px', padding: '12px 14px', border: '1px solid #EBE4D8', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.8rem', color: '#2B1B17' }}>{r.name}</div>
-                  <span style={{ fontSize: '0.68rem', color: '#887B70' }}>{r.city}</span>
+              <div key={i} className="review-card-item">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.84rem', color: '#2B1B17' }}>{r.name}</div>
+                  <span style={{ fontSize: '0.7rem', color: '#887B70', fontWeight: 400 }}>{r.city}</span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '2px', color: '#FFAA00', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', gap: '2px', color: '#FFAA00', marginBottom: '8px' }}>
                   {[...Array(r.rating)].map((_, idx) => (
-                    <Star key={idx} size={11} fill="#FFAA00" color="#FFAA00" />
+                    <Star key={idx} size={12} fill="#FFAA00" color="#FFAA00" />
                   ))}
                 </div>
 
-                <p style={{ fontSize: '0.74rem', color: '#554A40', lineHeight: '1.4', margin: '0 0 6px' }}>
+                <p style={{ fontSize: '0.76rem', color: '#554A40', lineHeight: '1.5', margin: '0 0 8px', fontWeight: 400 }}>
                   &ldquo;{r.quote}&rdquo;
                 </p>
 
-                <div style={{ fontSize: '0.66rem', color: '#2E7D32', fontWeight: 700 }}>
+                <div style={{ fontSize: '0.68rem', color: '#2E7D32', fontWeight: 500 }}>
                   ✓ Purchased {r.toy}
                 </div>
               </div>
@@ -321,17 +372,17 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 8. NEW SECTION: 100% RISK-FREE SHOPPING PROMISE */}
-        <section style={{ padding: '0 12px', marginTop: '20px' }}>
-          <div style={{ background: '#FAF8F4', borderRadius: '12px', border: '1px dashed #D6C8B8', padding: '14px', textAlign: 'center' }}>
-            <div style={{ fontSize: '1.3rem', marginBottom: '4px' }}>🛡️</div>
-            <h3 style={{ fontSize: '0.88rem', fontWeight: 800, color: '#2B1B17', margin: '0 0 4px' }}>
+        {/* 7. 100% RISK-FREE SHOPPING PROMISE */}
+        <section id="guarantee" className="risk-free-section" style={{ padding: '0 14px', marginTop: '22px' }}>
+          <div className="guarantee-box-wrap">
+            <div style={{ fontSize: '1.5rem', marginBottom: '6px' }}>🛡️</div>
+            <h3 style={{ fontSize: '0.96rem', fontWeight: 600, color: '#2B1B17', margin: '0 0 6px' }}>
               HOPEKRAFT Peace of Mind Guarantee
             </h3>
-            <p style={{ fontSize: '0.72rem', color: '#6A5F56', margin: '0 auto 10px', maxWidth: '360px', lineHeight: '1.4' }}>
+            <p style={{ fontSize: '0.75rem', color: '#6A5F56', margin: '0 auto 12px', maxWidth: '440px', lineHeight: '1.5', fontWeight: 400 }}>
               Inspect your toys at your doorstep with Cash on Delivery. If you are not 100% satisfied, enjoy our instant 7-day doorstep replacement guarantee.
             </p>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#E8F5E9', color: '#1B5E20', fontSize: '0.72rem', fontWeight: 800, padding: '4px 12px', borderRadius: '20px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#E8F5E9', color: '#1B5E20', fontSize: '0.72rem', fontWeight: 600, padding: '5px 14px', borderRadius: '20px' }}>
               ✓ 100% Zero-Risk Purchase
             </div>
           </div>

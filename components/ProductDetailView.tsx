@@ -202,7 +202,7 @@ export default function ProductDetailView({ productId = 'easel' }: ProductDetail
   ];
 
   return (
-    <div className="app-container storefront-shell" style={{ maxWidth: '640px', margin: '0 auto', background: '#FAF7F2', minHeight: '100vh', paddingBottom: '160px', position: 'relative' }}>
+    <div className="app-container storefront-shell pdp-shell">
       {/* 1. TOP HEADER WITH INTEGRATED LEFT BACK BUTTON */}
       <Header hideSearch backHref="/" />
 
@@ -290,9 +290,11 @@ export default function ProductDetailView({ productId = 'easel' }: ProductDetail
       `}} />
 
       <main className="pdp-main-content" style={{ padding: '8px 12px 30px' }}>
-        
-        {/* 2. SWIPEABLE MEDIA GALLERY IN ELEGANT FRAME (NO OVERLAID TEXT/BADGES ON PHOTO) */}
-        <section 
+        <div className="pdp-main-grid">
+          {/* Left Column: Product Gallery & Desktop Actions */}
+          <div className="pdp-gallery-col">
+            {/* 2. SWIPEABLE MEDIA GALLERY IN ELEGANT FRAME (NO OVERLAID TEXT/BADGES ON PHOTO) */}
+            <section 
           className="pdp-framed-gallery"
           style={{ 
             background: '#FFFFFF', 
@@ -477,8 +479,70 @@ export default function ProductDetailView({ productId = 'easel' }: ProductDetail
           )}
         </section>
 
-        {/* 3. REFINED PRODUCT INFO & BUY BLOCK (FIXED OVERFLOW ISSUE) */}
-        <section style={{ background: '#FFFFFF', borderRadius: '14px', border: '1px solid #EBE4D8', padding: '16px', marginTop: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
+            {/* Flipkart & Amazon Style Desktop Buy Buttons (Positioned under photo on PC) */}
+            <div className="pdp-desktop-actions">
+              <button
+                type="button"
+                onClick={() => handleBuyNow('online')}
+                className="hk-green-btn"
+                style={{
+                  flex: 1.25,
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  fontSize: '0.92rem',
+                  cursor: 'pointer',
+                  border: 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '2px',
+                  boxShadow: '0 4px 14px rgba(21, 128, 61, 0.3)'
+                }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', color: '#DCFCE7' }}>
+                  <Zap size={13} fill="#FFD700" color="#FFD700" /> PAY ONLINE (₹100 OFF)
+                </span>
+                <span style={{ fontSize: '1.05rem', fontWeight: 900 }}>
+                  ₹{(product.price - 100).toLocaleString('en-IN')}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleBuyNow('cod')}
+                className="hk-brown-btn"
+                style={{
+                  flex: 1,
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  fontSize: '0.92rem',
+                  cursor: 'pointer',
+                  border: 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '2px',
+                  boxShadow: '0 4px 14px rgba(38, 20, 11, 0.25)'
+                }}
+              >
+                <span style={{ fontSize: '0.74rem', opacity: 0.9 }}>💵 CASH ON DELIVERY</span>
+                <span style={{ fontSize: '1.05rem', fontWeight: 900 }}>
+                  ₹{product.price.toLocaleString('en-IN')}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: Product Info & Customer Reviews */}
+          <div className="pdp-info-col">
+            {/* 3. REFINED PRODUCT INFO & BUY BLOCK */}
+            <section style={{ background: '#FFFFFF', borderRadius: '14px', border: '1px solid #EBE4D8', padding: '16px', marginTop: '0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
           {/* Eyebrow & Brand Verification */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
             <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#8D7B68', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
@@ -955,12 +1019,15 @@ export default function ProductDetailView({ productId = 'easel' }: ProductDetail
             ))}
           </div>
         </section>
+        </div>
+        </div>
       </main>
 
       {/* 9. THICK BROWN STICKY BUY NOW ACTION BAR (WITH FAST SPLASH ANIMATION & ZERO OVERLAP) */}
       {/* 5. PROFESSIONAL DUAL-BUTTON MOBILE STICKY ACTION BAR */}
       <div 
         id="pdp-sticky-bar"
+        className="pdp-sticky-cta-bar"
         style={{
           position: 'fixed',
           bottom: 0,
