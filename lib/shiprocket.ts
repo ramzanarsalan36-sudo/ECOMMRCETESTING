@@ -106,7 +106,7 @@ export async function createShiprocketShipment(
         billing_pincode: order.customer.pincode,
         billing_state: order.customer.state,
         billing_country: 'India',
-        billing_email: order.customer.email || 'customer@hopekraft.in',
+        billing_email: order.customer.email || 'hopekraft26@gmail.com',
         billing_phone: order.customer.phone.replace(/[^0-9]/g, '').slice(-10),
         shipping_is_billing: true,
         order_items: order.items.map(item => ({

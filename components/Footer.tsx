@@ -36,7 +36,7 @@ export default function Footer() {
 
         {/* CONTACT INFO */}
         <div style={{ fontSize: '0.74rem', color: '#6D4C41', margin: '12px 0', lineHeight: 1.6, fontWeight: 400 }}>
-          <p style={{ margin: '2px 0' }}>✉ support@hopekraft.in · 📞 +91 98765 43210</p>
+          <p style={{ margin: '2px 0' }}>✉ hopekraft26@gmail.com · 📞 +91 98765 43210</p>
           <p style={{ margin: '2px 0', fontSize: '0.7rem', color: '#8D7B71' }}>100% Child-Safe Solid European Beechwood • BIS Approved • Non-Toxic Finishes</p>
         </div>
 

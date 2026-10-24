@@ -526,7 +526,7 @@ export function generatePackagingSlipHtml(order: Order): string {
         <div style="font-size: 10px; margin-top: 2px; line-height: 1.35;">
           #42 Woodcraft Avenue, Peenya Industrial Area, Phase 2<br />
           Bengaluru, Karnataka - 560058, India<br />
-          Phone: +91 98765 43210 | Email: help@hopekraft.in
+          Phone: +91 98765 43210 | Email: hopekraft26@gmail.com
         </div>
       </div>
 
@@ -632,7 +632,7 @@ export function generatePackagingSlipHtml(order: Order): string {
     <div class="footer-bar">
       <div>
         <strong>Declaration:</strong> We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.<br />
-        <strong>Returns &amp; Customer Care:</strong> help@hopekraft.in | WhatsApp: +91 98765 43210 | www.hopekraft.in/returns<br />
+        <strong>Returns &amp; Customer Care:</strong> hopekraft26@gmail.com | WhatsApp: +91 98765 43210 | www.hopekraft.in/returns<br />
         <span style="font-size: 8px;">*This is a computer-generated tax invoice &amp; shipping document generated under Section 31 of CGST Act, 2017. Physical signature not required.</span>
       </div>
       <div class="signatory-box">

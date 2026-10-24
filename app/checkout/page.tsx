@@ -25,6 +25,7 @@ function CheckoutContent() {
   // Form Fields
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
@@ -67,6 +68,7 @@ function CheckoutContent() {
       customer: {
         name: name.trim(),
         phone: cleanPhone,
+        email: email.trim() || 'hopekraft26@gmail.com',
         address: address.trim(),
         city: city.trim(),
         pincode: pincode.trim(),
@@ -280,6 +282,29 @@ function CheckoutContent() {
                   }}
                 />
               </div>
+            </div>
+
+            {/* Email Address (for tracking & invoice updates) */}
+            <div style={{ marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: '#475569', marginBottom: '2px' }}>
+                Email Address (Order Tracking &amp; Invoice)
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="hopekraft26@gmail.com"
+                style={{
+                  width: '100%',
+                  padding: '7px 9px',
+                  borderRadius: '6px',
+                  border: '1px solid #D5CEBE',
+                  fontSize: '0.82rem',
+                  outline: 'none',
+                  background: '#FAFAFA',
+                  boxSizing: 'border-box'
+                }}
+              />
             </div>
 
             {/* Row 2: Complete Address */}
