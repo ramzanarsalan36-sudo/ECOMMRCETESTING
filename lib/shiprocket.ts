@@ -67,11 +67,30 @@ export interface ShiprocketShipmentResult {
   isSimulated?: boolean;
 }
 
+export interface ShippingOptions {
+  courierPreference?: string;
+  weight?: number;
+  length?: number;
+  breadth?: number;
+  height?: number;
+  pickupPincode?: string;
+}
+
 /**
  * Creates an order & generates an AWB in Shiprocket
  */
-export async function createShiprocketShipment(order: Order): Promise<ShiprocketShipmentResult> {
+export async function createShiprocketShipment(
+  order: Order,
+  options?: ShippingOptions
+): Promise<ShiprocketShipmentResult> {
   const token = await getShiprocketToken();
+  const pkgWeight = options?.weight || 1.5;
+  const pkgLength = options?.length || 30;
+  const pkgBreadth = options?.breadth || 20;
+  const pkgHeight = options?.height || 15;
+  const preferredCourier = options?.courierPreference && options.courierPreference !== 'auto'
+    ? options.courierPreference
+    : null;
 
   if (token) {
     try {
@@ -100,10 +119,10 @@ export async function createShiprocketShipment(order: Order): Promise<Shiprocket
         })),
         payment_method: order.paymentMethod === 'cod' ? 'COD' : 'Prepaid',
         sub_total: order.total,
-        length: 30, // dimensions in cm
-        breadth: 20,
-        height: 15,
-        weight: 1.5 // in kg
+        length: pkgLength, // dimensions in cm
+        breadth: pkgBreadth,
+        height: pkgHeight,
+        weight: pkgWeight // in kg
       };
 
       const createRes = await fetch('https://apiv2.shiprocket.in/v1/external/orders/create/adhoc', {
@@ -123,7 +142,7 @@ export async function createShiprocketShipment(order: Order): Promise<Shiprocket
 
         // 2. Request AWB assignment
         let awb = createData.awb_code;
-        let courier = createData.courier_name || 'Shiprocket Air Express';
+        let courier = preferredCourier || createData.courier_name || 'Shiprocket Air Express';
 
         if (!awb && srShipmentId) {
           const awbRes = await fetch('https://apiv2.shiprocket.in/v1/external/courier/assign/awb', {
@@ -132,7 +151,10 @@ export async function createShiprocketShipment(order: Order): Promise<Shiprocket
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ shipment_id: srShipmentId })
+            body: JSON.stringify({
+              shipment_id: srShipmentId,
+              ...(preferredCourier ? { courier_name: preferredCourier } : {})
+            })
           });
           const awbData = await awbRes.json();
           if (awbData.response?.data?.awb_code) {
@@ -161,7 +183,7 @@ export async function createShiprocketShipment(order: Order): Promise<Shiprocket
   const simulatedSrShipmentId = `SR-SHIP-${Math.floor(10000 + Math.random() * 90000)}`;
   const simulatedAwb = `7849${Math.floor(1000000 + Math.random() * 9000000)}`;
   const couriers = ['BlueDart Express', 'Delhivery Surface', 'Ekart Logistics', 'DTDC Air'];
-  const assignedCourier = couriers[Math.floor(Math.random() * couriers.length)];
+  const assignedCourier = preferredCourier || couriers[Math.floor(Math.random() * couriers.length)];
 
   return {
     success: true,

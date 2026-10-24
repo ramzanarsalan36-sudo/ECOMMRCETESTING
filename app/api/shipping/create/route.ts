@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { orderId } = body;
+    const { orderId, courierPreference, weight, length, breadth, height, pickupPincode } = body;
 
     if (!orderId) {
       return NextResponse.json(
@@ -34,8 +34,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Call Shiprocket Logistics
-    const result = await createShiprocketShipment(order);
+    // Call Shiprocket Logistics with options
+    const result = await createShiprocketShipment(order, {
+      courierPreference,
+      weight: weight ? Number(weight) : undefined,
+      length: length ? Number(length) : undefined,
+      breadth: breadth ? Number(breadth) : undefined,
+      height: height ? Number(height) : undefined,
+      pickupPincode
+    });
 
     if (result.success) {
       const updated = await updateOrder(order.id, {

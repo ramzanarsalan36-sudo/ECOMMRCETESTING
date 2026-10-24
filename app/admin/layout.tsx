@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldCheck, LogOut, Store, Truck, CreditCard } from 'lucide-react';
+import AdminSidebar from '@/components/admin/AdminSidebar';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -65,64 +66,72 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="admin-layout-root" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* Top Admin Bar */}
-      <header className="admin-top-nav">
-        <div className="admin-brand-left">
-          <Link href="/admin" className="admin-logo-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-            <img
-              src="/assets/images/hopekraft_logo.png"
-              alt="HOPEKRAFT"
-              style={{ height: '24px', width: 'auto', objectFit: 'contain' }}
-            />
-            <span className="admin-shield-badge">Admin Ops</span>
-          </Link>
+      {/* Shiprocket-Inspired Hover Expandable Sidebar */}
+      <Suspense fallback={<div style={{ width: '68px', height: '100vh', background: '#080D21' }} />}>
+        <AdminSidebar />
+      </Suspense>
 
-          {/* Integration Status Badges */}
-          <div className="admin-status-indicators">
-            <span className="system-pill" style={{ background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A' }} title="Firebase Realtime Database Synced">
-              <span className="pulse-dot" style={{ background: '#F59E0B' }}></span>
-              🔥 Firebase RTDB
-            </span>
-            <span className="system-pill green" title="Razorpay Webhook & Payment Gateway Online">
-              <span className="pulse-dot"></span>
-              <CreditCard size={11} /> Razorpay Live
-            </span>
-            <span className="system-pill indigo" title="Shiprocket API Dispatch Ready">
-              <Truck size={11} /> Shiprocket Edge
-            </span>
+      {/* Main Viewport Container */}
+      <div className="admin-main-viewport">
+        {/* Top Admin Bar */}
+        <header className="admin-top-nav">
+          <div className="admin-brand-left">
+            <Link href="/admin" className="admin-logo-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+              <img
+                src="/assets/images/hopekraft_logo.png"
+                alt="HOPEKRAFT"
+                style={{ height: '24px', width: 'auto', objectFit: 'contain' }}
+              />
+              <span className="admin-shield-badge">Admin Ops</span>
+            </Link>
+
+            {/* Integration Status Badges */}
+            <div className="admin-status-indicators">
+              <span className="system-pill" style={{ background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A' }} title="Firebase Realtime Database Synced">
+                <span className="pulse-dot" style={{ background: '#F59E0B' }}></span>
+                🔥 Firebase RTDB
+              </span>
+              <span className="system-pill green" title="Razorpay Webhook & Payment Gateway Online">
+                <span className="pulse-dot"></span>
+                <CreditCard size={11} /> Razorpay Live
+              </span>
+              <span className="system-pill indigo" title="Shiprocket API Dispatch Ready">
+                <Truck size={11} /> Shiprocket Edge
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div className="admin-nav-actions">
-          <Link
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="admin-store-btn"
-            title="Open customer storefront in new tab"
-          >
-            <Store size={13} /> Storefront ↗
-          </Link>
+          <div className="admin-nav-actions">
+            <Link
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="admin-store-btn"
+              title="Open customer storefront in new tab"
+            >
+              <Store size={13} /> Storefront ↗
+            </Link>
 
-          <span className="admin-user-pill">
-            👤 <strong>{adminUser}</strong>
-          </span>
+            <span className="admin-user-pill">
+              👤 <strong>{adminUser}</strong>
+            </span>
 
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="admin-logout-btn"
-            title="Secure log out"
-          >
-            <LogOut size={13} /> Logout
-          </button>
-        </div>
-      </header>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="admin-logout-btn"
+              title="Secure log out"
+            >
+              <LogOut size={13} /> Logout
+            </button>
+          </div>
+        </header>
 
-      {/* Admin Body Content */}
-      <main className="admin-content-wrap">
-        {children}
-      </main>
+        {/* Admin Body Content */}
+        <main className="admin-content-wrap">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

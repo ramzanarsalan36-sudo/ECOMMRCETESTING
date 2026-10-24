@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Order, OrderStatus } from '@/lib/db';
 import {
   Package,
@@ -22,20 +23,35 @@ import {
   MessageSquare,
   Trash2,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  ArrowUpDown,
+  Calendar,
+  MoreHorizontal
 } from 'lucide-react';
 import { printPackagingSlip } from '@/lib/packagingSlip';
 
-export default function AdminOrdersPage() {
+function AdminOrdersPageContent() {
+  const searchParams = useSearchParams();
+  const currentView = searchParams.get('view') || 'orders';
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
 
+  // Date Filtering & Sorting State (Today, Yesterday, Last 7 Days, All)
+  const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'WEEK'>('ALL');
+  const [sortBy, setSortBy] = useState<'DATE_DESC' | 'DATE_ASC'>('DATE_DESC');
+
+  // In-Row Shiprocket Direct Assign Loading Tracker
+  const [assigningOrderId, setAssigningOrderId] = useState<string | null>(null);
+
+  // More Actions Dropdown State
+  const [activeDropdownOrderId, setActiveDropdownOrderId] = useState<string | null>(null);
+
   // Modal Drawer State
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
-  const [dispatchLoading, setDispatchLoading] = useState(false);
   const [newStatus, setNewStatus] = useState<OrderStatus>('Pending');
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
@@ -69,28 +85,85 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     loadOrders();
+
+    const closeDropdown = () => setActiveDropdownOrderId(null);
+    window.addEventListener('click', closeDropdown);
+    return () => window.removeEventListener('click', closeDropdown);
   }, []);
 
-  // Filtered orders
-  const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
-      // Status filter
-      if (selectedStatus !== 'ALL' && order.orderStatus.toUpperCase() !== selectedStatus) {
-        return false;
+  const handleQuickStatusChange = async (orderId: string, status: OrderStatus) => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: status })
+      });
+      const data = await res.json();
+      if (res.ok && data.order) {
+        setOrders(prev => prev.map(o => (o.id === data.order.id ? data.order : o)));
+        if (selectedOrder && selectedOrder.id === data.order.id) {
+          setSelectedOrder(data.order);
+        }
+        setFeedbackMsg(`Order #${data.order.orderNumber} status changed to ${status}`);
+        setTimeout(() => setFeedbackMsg(null), 3000);
       }
-      // Search filter
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        order.id.toLowerCase().includes(q) ||
-        order.orderNumber.toLowerCase().includes(q) ||
-        order.customer.name.toLowerCase().includes(q) ||
-        order.customer.phone.includes(q) ||
-        order.customer.city.toLowerCase().includes(q) ||
-        (order.awbCode && order.awbCode.toLowerCase().includes(q))
-      );
+    } catch (err: any) {
+      alert(`Failed to change status: ${err.message}`);
+    }
+  };
+
+  // 1-Click In-Row Assign to Shiprocket
+  const handleAssignToShiprocket = async (orderId: string) => {
+    setAssigningOrderId(orderId);
+    try {
+      const res = await fetch('/api/shipping/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId })
+      });
+      const data = await res.json();
+      if (res.ok && data.order) {
+        setOrders(prev => prev.map(o => (o.id === data.order.id ? data.order : o)));
+        if (selectedOrder && selectedOrder.id === data.order.id) {
+          setSelectedOrder(data.order);
+        }
+        setFeedbackMsg(`Order ${data.order.orderNumber} assigned to Shiprocket! AWB: ${data.order.awbCode} (${data.order.courierName})`);
+        setTimeout(() => setFeedbackMsg(null), 4000);
+      } else {
+        alert(`Shiprocket assign failed: ${data.error || 'Server error'}`);
+      }
+    } catch (err: any) {
+      alert(`Dispatch error: ${err.message}`);
+    } finally {
+      setAssigningOrderId(null);
+    }
+  };
+
+  // Dynamic Date Counts
+  const dateCounts = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const yesterdayStart = todayStart - 86400000;
+    const sevenDaysStart = now.getTime() - 7 * 86400000;
+
+    let today = 0;
+    let yesterday = 0;
+    let week = 0;
+
+    orders.forEach(o => {
+      const t = new Date(o.createdAt).getTime();
+      if (t >= todayStart) today++;
+      if (t >= yesterdayStart && t < todayStart) yesterday++;
+      if (t >= sevenDaysStart) week++;
     });
-  }, [orders, selectedStatus, searchQuery]);
+
+    return {
+      ALL: orders.length,
+      TODAY: today,
+      YESTERDAY: yesterday,
+      WEEK: week
+    };
+  }, [orders]);
 
   // Tab counts
   const tabCounts = useMemo(() => {
@@ -110,6 +183,53 @@ export default function AdminOrdersPage() {
     });
     return counts;
   }, [orders]);
+
+  // Filtered & Sorted orders
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const yesterdayStart = todayStart - 86400000;
+    const sevenDaysStart = now.getTime() - 7 * 86400000;
+
+    const list = orders.filter(order => {
+      // If Shiprocket tab is selected from sidebar, show shipped / pending shiprocket orders
+      if (currentView === 'shiprocket') {
+        if (order.orderStatus === 'Cancelled') return false;
+      }
+
+      // Status filter
+      if (selectedStatus !== 'ALL' && order.orderStatus.toUpperCase() !== selectedStatus) {
+        return false;
+      }
+
+      // Date filter (Today, Yesterday, Last 7 Days)
+      const t = new Date(order.createdAt).getTime();
+      if (dateFilter === 'TODAY' && t < todayStart) return false;
+      if (dateFilter === 'YESTERDAY' && (t < yesterdayStart || t >= todayStart)) return false;
+      if (dateFilter === 'WEEK' && t < sevenDaysStart) return false;
+
+      // Search filter
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        order.id.toLowerCase().includes(q) ||
+        order.orderNumber.toLowerCase().includes(q) ||
+        order.customer.name.toLowerCase().includes(q) ||
+        order.customer.phone.includes(q) ||
+        order.customer.city.toLowerCase().includes(q) ||
+        (order.awbCode && order.awbCode.toLowerCase().includes(q)) ||
+        (order.courierName && order.courierName.toLowerCase().includes(q))
+      );
+    });
+
+    // Sort order
+    return [...list].sort((a, b) => {
+      if (sortBy === 'DATE_DESC') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+  }, [orders, selectedStatus, dateFilter, sortBy, searchQuery, currentView]);
 
   // Key Metrics
   const metrics = useMemo(() => {
@@ -190,29 +310,6 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const handleShiprocketDispatch = async (orderId: string) => {
-    setDispatchLoading(true);
-    try {
-      const res = await fetch('/api/shipping/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId })
-      });
-      const data = await res.json();
-      if (res.ok && data.order) {
-        setSelectedOrder(data.order);
-        setOrders(prev => prev.map(o => (o.id === data.order.id ? data.order : o)));
-        setFeedbackMsg(`Dispatched via Shiprocket! AWB: ${data.order.awbCode} (${data.order.courierName})`);
-      } else {
-        setFeedbackMsg(`Dispatch failed: ${data.error || 'Check Shiprocket credentials'}`);
-      }
-    } catch (err: any) {
-      setFeedbackMsg(`Dispatch error: ${err.message}`);
-    } finally {
-      setDispatchLoading(false);
-    }
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setFeedbackMsg('Copied to clipboard! 📋');
@@ -283,7 +380,9 @@ export default function AdminOrdersPage() {
       {/* PAGE HEADER */}
       <div className="admin-page-header">
         <div className="admin-header-title-wrap">
-          <h1 className="admin-page-title">Orders &amp; Dispatch Engine</h1>
+          <h1 className="admin-page-title">
+            {currentView === 'shiprocket' ? 'Shiprocket Orders' : 'Orders & Dispatch Engine'}
+          </h1>
           <span className="admin-live-badge">
             <span className="pulse-dot"></span>
             Live ({filteredOrders.length} showing)
@@ -313,7 +412,7 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* COMPACT METRICS BAR (FITS IN WINDOW WITHOUT PUSHING CONTENT) */}
+      {/* KEY METRICS BAR */}
       <div className="admin-metrics-grid">
         <div className="admin-stat-card">
           <div className="stat-icon-wrap" style={{ background: '#ECFDF5', color: '#059669' }}>
@@ -341,28 +440,28 @@ export default function AdminOrdersPage() {
           </div>
           <div>
             <div className="stat-value">{metrics.pendingOrders}</div>
-            <div className="stat-label">Pending Action</div>
+            <div className="stat-label">Pending Orders</div>
           </div>
         </div>
 
         <div className="admin-stat-card">
-          <div className="stat-icon-wrap" style={{ background: '#F5F3FF', color: '#7C3AED' }}>
-            <CheckCircle size={18} />
+          <div className="stat-icon-wrap" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
+            <Truck size={18} />
           </div>
           <div>
             <div className="stat-value">{metrics.dispatchedOrders}</div>
-            <div className="stat-label">Shipped / Delivered</div>
+            <div className="stat-label">Shipped via Shiprocket</div>
           </div>
         </div>
       </div>
 
-      {/* CONTROLS: SEARCH & STATUS TABS */}
+      {/* SEARCH & STATUS TABS */}
       <div className="admin-controls-card">
         <div className="admin-search-wrapper">
           <input
             type="text"
             className="admin-search-input"
-            placeholder="Search Order #, customer, phone, city, AWB..."
+            placeholder="Search Order #, customer, phone, city, AWB, courier..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
@@ -393,20 +492,102 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* DESKTOP ORDERS TABLE (FITS DESKTOP WINDOW & STRICT 1-LINE CLIENT LAYOUT) */}
+      {/* DATE FILTERING & SORTING BAR (Today, Yesterday, Last 7 Days, All + Sort) */}
+      <div className="admin-date-filter-bar">
+        <div className="date-pills-wrap">
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', display: 'inline-flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
+            <Calendar size={13} /> Date:
+          </span>
+
+          <button
+            type="button"
+            className={`date-pill-btn ${dateFilter === 'ALL' ? 'active' : ''}`}
+            onClick={() => setDateFilter('ALL')}
+          >
+            All Dates
+            <span className="date-pill-count">{dateCounts.ALL}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`date-pill-btn ${dateFilter === 'TODAY' ? 'active' : ''}`}
+            onClick={() => setDateFilter('TODAY')}
+          >
+            ⚡ Today
+            <span className="date-pill-count">{dateCounts.TODAY}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`date-pill-btn ${dateFilter === 'YESTERDAY' ? 'active' : ''}`}
+            onClick={() => setDateFilter('YESTERDAY')}
+          >
+            ⏳ Yesterday
+            <span className="date-pill-count">{dateCounts.YESTERDAY}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`date-pill-btn ${dateFilter === 'WEEK' ? 'active' : ''}`}
+            onClick={() => setDateFilter('WEEK')}
+          >
+            Last 7 Days
+            <span className="date-pill-count">{dateCounts.WEEK}</span>
+          </button>
+        </div>
+
+        {/* Sort Selector */}
+        <div className="admin-sort-wrap">
+          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <ArrowUpDown size={12} /> Sort:
+          </label>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as any)}
+            className="admin-sort-select"
+          >
+            <option value="DATE_DESC">Newest First</option>
+            <option value="DATE_ASC">Oldest First</option>
+          </select>
+        </div>
+      </div>
+
+      {/* FEEDBACK TOAST */}
+      {feedbackMsg && (
+        <div
+          style={{
+            background: '#ECFDF5',
+            border: '1px solid #A7F3D0',
+            color: '#065F46',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            fontSize: '0.84rem',
+            fontWeight: 600,
+            marginBottom: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+          }}
+        >
+          <CheckCircle2 size={16} />
+          <span>{feedbackMsg}</span>
+        </div>
+      )}
+
+      {/* DESKTOP ORDERS TABLE */}
       <div className="admin-table-container">
         <table className="admin-orders-table">
           <thead>
             <tr>
-              <th style={{ width: '9.5%' }}>Order ID</th>
-              <th style={{ width: '8.5%' }}>Date</th>
-              <th style={{ width: '28%' }}>Client Information</th>
-              <th style={{ width: '13%' }}>Product / Items</th>
-              <th style={{ width: '7.5%' }}>Amount</th>
-              <th style={{ width: '9%' }}>Payment</th>
-              <th style={{ width: '8.5%' }}>Status</th>
-              <th style={{ width: '8%' }}>Tracking</th>
-              <th style={{ width: '8%', textAlign: 'right' }}>Actions</th>
+              <th style={{ width: '13%' }}>ORDER &amp; DATE</th>
+              <th style={{ width: '25%' }}>CLIENT INFORMATION</th>
+              <th style={{ width: '13%' }}>PRODUCT / ITEMS</th>
+              <th style={{ width: '8%' }}>AMOUNT</th>
+              <th style={{ width: '9%' }}>PAYMENT</th>
+              <th style={{ width: '9%' }}>STATUS</th>
+              <th style={{ width: '12%' }}>SHIPROCKET COURIER</th>
+              <th style={{ width: '11%', textAlign: 'right' }}>ACTIONS</th>
             </tr>
           </thead>
           <tbody>
@@ -420,32 +601,35 @@ export default function AdminOrdersPage() {
                   order.orderNumber,
                   order.orderStatus
                 );
+                const isAssigningThis = assigningOrderId === order.id;
 
                 return (
                   <tr key={order.id} className={`row-status-${statusClass}`}>
-                    {/* Order ID */}
+                    {/* COMBINED ORDER ID & DATE (2-LINE DOUBLE ROW FIT) */}
                     <td>
-                      <strong
-                        style={{
-                          color: '#2563EB',
-                          cursor: 'pointer',
-                          fontFamily: 'ui-monospace, SFMono-Regular, monospace'
-                        }}
-                        onClick={() => openOrderModal(order)}
-                        title="Click to view complete order"
-                      >
-                        {order.orderNumber}
-                      </strong>
-                    </td>
-
-                    {/* Date */}
-                    <td style={{ color: '#64748B', fontSize: '0.72rem' }}>
-                      {new Date(order.createdAt).toLocaleDateString('en-IN', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <strong
+                          style={{
+                            color: '#2563EB',
+                            cursor: 'pointer',
+                            fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                            fontSize: '0.82rem',
+                            fontWeight: 800
+                          }}
+                          onClick={() => openOrderModal(order)}
+                          title="Click to view complete order"
+                        >
+                          {order.orderNumber}
+                        </strong>
+                        <span style={{ color: '#64748B', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+                          {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
                     </td>
 
                     {/* CLIENT CONTENT IN STRICTLY ONE LINE */}
@@ -459,9 +643,7 @@ export default function AdminOrdersPage() {
                         <span className="client-dot">·</span>
                         <span className="client-phone">{order.customer.phone}</span>
                         <span className="client-dot">·</span>
-                        <span className="client-city">
-                          {order.customer.city}
-                        </span>
+                        <span className="client-city">{order.customer.city}</span>
                       </div>
                     </td>
 
@@ -498,39 +680,42 @@ export default function AdminOrdersPage() {
                       </span>
                     </td>
 
-                    {/* Logistics Courier */}
+                    {/* MOVE TO SHIPROCKET / AWB TRACKING */}
                     <td>
                       {order.awbCode ? (
-                        <a
-                          href={order.trackingUrl || `https://shiprocket.co/tracking/${order.awbCode}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="courier-badge"
-                          title={`Track in Shiprocket: ${order.awbCode}`}
-                        >
-                          <Truck size={10} /> {order.awbCode.length > 9 ? `...${order.awbCode.slice(-7)}` : order.awbCode}
-                        </a>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <a
+                            href={order.trackingUrl || `https://shiprocket.co/tracking/${order.awbCode}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="courier-badge"
+                            title={`Track in Shiprocket: ${order.awbCode}`}
+                          >
+                            <Truck size={10} /> {order.courierName || 'Shiprocket'}: ...{order.awbCode.slice(-7)}
+                          </a>
+                        </div>
                       ) : (
                         <button
                           type="button"
-                          className="btn-shiprocket-action"
-                          onClick={() => handleShiprocketDispatch(order.id)}
-                          title="Generate Shiprocket AWB dispatch label"
+                          className="btn-assign-shiprocket"
+                          disabled={isAssigningThis}
+                          onClick={() => handleAssignToShiprocket(order.id)}
+                          title="Move to Shiprocket immediately"
                         >
-                          <Truck size={10} /> Ship
+                          <Truck size={11} className={isAssigningThis ? 'animate-spin' : ''} />
+                          {isAssigningThis ? 'Moving...' : 'Move to Shiprocket'}
                         </button>
                       )}
                     </td>
 
-                    {/* Actions */}
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end' }}>
+                    {/* ACTIONS (NEVER CUT OFF + MORE DROPDOWN) */}
+                    <td style={{ textAlign: 'right', overflow: 'visible', position: 'relative' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
                         <button
                           type="button"
                           onClick={() => openOrderModal(order)}
                           className="btn-action-view"
                           title="Inspect Order Details"
-                          style={{ padding: '3px 6px', fontSize: '0.7rem' }}
                         >
                           <Eye size={12} />
                         </button>
@@ -540,7 +725,7 @@ export default function AdminOrdersPage() {
                           onClick={() => printPackagingSlip(order)}
                           className="btn-action-view"
                           title="Print Packaging Slip & Tax Invoice"
-                          style={{ padding: '3px 6px', fontSize: '0.7rem', color: '#0077C8' }}
+                          style={{ color: '#0077C8' }}
                         >
                           <Printer size={12} />
                         </button>
@@ -551,9 +736,8 @@ export default function AdminOrdersPage() {
                           rel="noopener noreferrer"
                           className="btn-action-wa"
                           title="Chat on WhatsApp"
-                          style={{ padding: '3px 6px', fontSize: '0.7rem' }}
                         >
-                          <MessageSquare size={11} />
+                          <MessageSquare size={12} />
                         </a>
 
                         <button
@@ -561,10 +745,119 @@ export default function AdminOrdersPage() {
                           onClick={() => openDeleteModal(order)}
                           className="btn-action-delete"
                           title="Delete Order"
-                          style={{ padding: '3px 6px', fontSize: '0.7rem' }}
                         >
                           <Trash2 size={12} />
                         </button>
+
+                        {/* MORE OPTIONS & STATUS CHANGER */}
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveDropdownOrderId(prev => prev === order.id ? null : order.id);
+                            }}
+                            className="btn-action-more"
+                            title="More Actions & Change Status"
+                          >
+                            <MoreHorizontal size={14} />
+                          </button>
+
+                          {activeDropdownOrderId === order.id && (
+                            <div
+                              className="admin-actions-dropdown-menu"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                className="admin-dropdown-item"
+                                onClick={() => {
+                                  setActiveDropdownOrderId(null);
+                                  openOrderModal(order);
+                                }}
+                              >
+                                <Eye size={13} color="#2563EB" />
+                                <span>View Full Details</span>
+                              </button>
+
+                              {!order.awbCode && (
+                                <button
+                                  type="button"
+                                  className="admin-dropdown-item"
+                                  onClick={() => {
+                                    setActiveDropdownOrderId(null);
+                                    handleAssignToShiprocket(order.id);
+                                  }}
+                                >
+                                  <Truck size={13} color="#4F46E5" />
+                                  <span>Move to Shiprocket</span>
+                                </button>
+                              )}
+
+                              <div style={{ borderTop: '1px solid #F1F5F9', margin: '3px 0' }} />
+
+                              <div style={{ padding: '3px 10px 1px', fontSize: '0.64rem', color: '#94A3B8', fontWeight: 800 }}>
+                                CHANGE STATUS
+                              </div>
+
+                              {(['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'] as OrderStatus[]).map(st => (
+                                <button
+                                  key={st}
+                                  type="button"
+                                  className="admin-dropdown-item"
+                                  style={{
+                                    paddingLeft: '16px',
+                                    fontWeight: order.orderStatus === st ? 800 : 500,
+                                    color: order.orderStatus === st ? '#2563EB' : '#475569'
+                                  }}
+                                  onClick={() => {
+                                    setActiveDropdownOrderId(null);
+                                    handleQuickStatusChange(order.id, st);
+                                  }}
+                                >
+                                  <span>{order.orderStatus === st ? '✓ ' : '• '}{st}</span>
+                                </button>
+                              ))}
+
+                              <div style={{ borderTop: '1px solid #F1F5F9', margin: '3px 0' }} />
+
+                              <button
+                                type="button"
+                                className="admin-dropdown-item"
+                                onClick={() => {
+                                  setActiveDropdownOrderId(null);
+                                  printPackagingSlip(order);
+                                }}
+                              >
+                                <Printer size={13} color="#0077C8" />
+                                <span>Print Packaging Slip</span>
+                              </button>
+
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="admin-dropdown-item"
+                                onClick={() => setActiveDropdownOrderId(null)}
+                              >
+                                <MessageSquare size={13} color="#15803D" />
+                                <span>WhatsApp Customer</span>
+                              </a>
+
+                              <button
+                                type="button"
+                                className="admin-dropdown-item danger"
+                                onClick={() => {
+                                  setActiveDropdownOrderId(null);
+                                  openDeleteModal(order);
+                                }}
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete Order Record</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -572,7 +865,7 @@ export default function AdminOrdersPage() {
               })
             ) : (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '36px', color: '#94A3B8' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '36px', color: '#94A3B8' }}>
                   No orders match the current filter or search criteria.
                 </td>
               </tr>
@@ -581,7 +874,7 @@ export default function AdminOrdersPage() {
         </table>
       </div>
 
-      {/* MOBILE RESPONSIVE CARDS VIEW (< 900px) */}
+      {/* MOBILE RESPONSIVE CARDS VIEW */}
       <div className="admin-mobile-cards">
         {filteredOrders.length > 0 ? (
           filteredOrders.map(order => {
@@ -593,10 +886,10 @@ export default function AdminOrdersPage() {
               order.orderNumber,
               order.orderStatus
             );
+            const isAssigningThis = assigningOrderId === order.id;
 
             return (
               <div key={order.id} className={`mobile-order-card card-status-${statusClass}`}>
-                {/* Mobile Card Header */}
                 <div className="mobile-card-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <strong
@@ -620,7 +913,6 @@ export default function AdminOrdersPage() {
                   </strong>
                 </div>
 
-                {/* Mobile Client Line (STRICTLY ONE LINE) */}
                 <div className="mobile-client-line">
                   <span className="client-avatar" style={{ width: '20px', height: '20px', fontSize: '0.62rem' }}>
                     {getInitials(order.customer.name)}
@@ -632,7 +924,6 @@ export default function AdminOrdersPage() {
                   <span style={{ color: '#64748B', fontSize: '0.75rem' }}>{order.customer.city}</span>
                 </div>
 
-                {/* Mobile Card Details */}
                 <div className="mobile-card-details">
                   <span>
                     📦 {order.items.reduce((s, i) => s + i.qty, 0)} item(s) · {order.items[0]?.name.slice(0, 20)}...
@@ -642,7 +933,6 @@ export default function AdminOrdersPage() {
                   </span>
                 </div>
 
-                {/* Mobile Card Actions */}
                 <div className="mobile-card-actions">
                   <button
                     type="button"
@@ -658,7 +948,6 @@ export default function AdminOrdersPage() {
                     onClick={() => printPackagingSlip(order)}
                     className="btn-action-view"
                     style={{ flex: 1, justifyContent: 'center', padding: '6px', color: '#0077C8' }}
-                    title="Print Packaging Slip"
                   >
                     <Printer size={13} /> Slip
                   </button>
@@ -676,11 +965,13 @@ export default function AdminOrdersPage() {
                   ) : (
                     <button
                       type="button"
-                      className="btn-shiprocket-action"
+                      className="btn-assign-shiprocket"
                       style={{ flex: 1, justifyContent: 'center', padding: '6px' }}
-                      onClick={() => handleShiprocketDispatch(order.id)}
+                      disabled={isAssigningThis}
+                      onClick={() => handleAssignToShiprocket(order.id)}
                     >
-                      <Truck size={12} /> Dispatch
+                      <Truck size={12} className={isAssigningThis ? 'animate-spin' : ''} />
+                      {isAssigningThis ? 'Assigning...' : 'Assign to Shiprocket'}
                     </button>
                   )}
 
@@ -727,7 +1018,6 @@ export default function AdminOrdersPage() {
               <X size={16} />
             </button>
 
-            {/* Modal Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
               <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A' }}>
                 Order {selectedOrder.orderNumber}
@@ -737,25 +1027,6 @@ export default function AdminOrdersPage() {
                 {selectedOrder.orderStatus}
               </span>
             </div>
-
-            {feedbackMsg && (
-              <div
-                style={{
-                  background: '#ECFDF5',
-                  border: '1px solid #A7F3D0',
-                  color: '#065F46',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '0.82rem',
-                  marginBottom: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <span>{feedbackMsg}</span>
-              </div>
-            )}
 
             {/* Quick Status Updater */}
             <div
@@ -812,16 +1083,16 @@ export default function AdminOrdersPage() {
                 </button>
               </div>
 
-              {/* Shiprocket Dispatch button */}
               {!selectedOrder.awbCode && (
                 <button
                   type="button"
-                  disabled={dispatchLoading}
-                  onClick={() => handleShiprocketDispatch(selectedOrder.id)}
-                  className="btn-shiprocket-action"
+                  disabled={assigningOrderId === selectedOrder.id}
+                  onClick={() => handleAssignToShiprocket(selectedOrder.id)}
+                  className="btn-assign-shiprocket"
                   style={{ padding: '6px 12px' }}
                 >
-                  <Truck size={13} /> {dispatchLoading ? 'Dispatching...' : 'Dispatch via Shiprocket 🚚'}
+                  <Truck size={13} className={assigningOrderId === selectedOrder.id ? 'animate-spin' : ''} />
+                  {assigningOrderId === selectedOrder.id ? 'Assigning...' : 'Assign to Shiprocket'}
                 </button>
               )}
             </div>
@@ -891,7 +1162,6 @@ export default function AdminOrdersPage() {
                   {selectedOrder.customer.state}
                 </p>
 
-                {/* Direct WhatsApp button in modal */}
                 <div style={{ marginTop: '10px' }}>
                   <a
                     href={getWhatsAppUrl(
@@ -1066,7 +1336,7 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {/* DANGER ORDER DELETION MODAL WITH DELETE TYPE & REASON */}
+      {/* DANGER ORDER DELETION MODAL */}
       {orderToDelete && (
         <div className="admin-modal-overlay" onClick={() => !deleteLoading && setOrderToDelete(null)}>
           <div className="admin-delete-modal-box" onClick={e => e.stopPropagation()}>
@@ -1080,7 +1350,6 @@ export default function AdminOrdersPage() {
               <X size={16} />
             </button>
 
-            {/* Header Badge */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span className="delete-header-pill">
                 <AlertTriangle size={13} /> Danger Action
@@ -1094,7 +1363,6 @@ export default function AdminOrdersPage() {
               Permanent deletion removes this order from the database and dispatch engine.
             </p>
 
-            {/* Visual Warning Summary Box */}
             <div className="delete-summary-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <strong style={{ fontSize: '0.9rem', color: '#0F172A' }}>{orderToDelete.customer.name}</strong>
@@ -1110,7 +1378,6 @@ export default function AdminOrdersPage() {
               </p>
             </div>
 
-            {/* Delete Type Selection */}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#1E293B', marginBottom: '5px' }}>
                 Select Delete Type / Reason: <span style={{ color: '#DC2626' }}>*</span>
@@ -1129,7 +1396,6 @@ export default function AdminOrdersPage() {
               </select>
             </div>
 
-            {/* Additional Internal Notes */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#1E293B', marginBottom: '5px' }}>
                 Additional Reason / Audit Notes (Optional):
@@ -1152,55 +1418,69 @@ export default function AdminOrdersPage() {
               />
             </div>
 
-            {/* Type to Confirm Safety Check */}
-            <div style={{ marginBottom: '18px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                To confirm deletion, please type <strong style={{ color: '#DC2626' }}>DELETE</strong> in all caps:
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#991B1B', marginBottom: '5px' }}>
+                Type &quot;DELETE&quot; to confirm:
               </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  value={deleteConfirmInput}
-                  onChange={e => setDeleteConfirmInput(e.target.value)}
-                  placeholder="Type DELETE"
-                  className={`delete-input-confirm ${deleteConfirmInput.trim().toUpperCase() === 'DELETE' ? 'valid' : ''}`}
-                />
-                {deleteConfirmInput.trim().toUpperCase() === 'DELETE' && (
-                  <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.76rem', fontWeight: 700 }}>
-                    <CheckCircle2 size={16} /> Verified
-                  </span>
-                )}
-              </div>
+              <input
+                type="text"
+                value={deleteConfirmInput}
+                onChange={e => setDeleteConfirmInput(e.target.value)}
+                placeholder="DELETE"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1.5px solid #FCA5A5',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  color: '#991B1B',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  background: '#FEF2F2',
+                  textTransform: 'uppercase'
+                }}
+              />
             </div>
 
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 disabled={deleteLoading}
                 onClick={() => setOrderToDelete(null)}
                 style={{
-                  background: '#F1F5F9',
+                  padding: '7px 14px',
+                  borderRadius: '6px',
                   border: '1px solid #CBD5E1',
+                  background: '#F8FAFC',
                   color: '#475569',
-                  borderRadius: '8px',
-                  padding: '9px 16px',
-                  fontSize: '0.84rem',
+                  fontSize: '0.8rem',
                   fontWeight: 600,
                   cursor: 'pointer'
                 }}
               >
                 Cancel
               </button>
-
               <button
                 type="button"
                 disabled={deleteLoading || deleteConfirmInput.trim().toUpperCase() !== 'DELETE'}
                 onClick={handleConfirmDelete}
-                className="btn-confirm-delete-danger"
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: deleteConfirmInput.trim().toUpperCase() === 'DELETE' ? '#DC2626' : '#FCA5A5',
+                  color: '#FFFFFF',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: deleteConfirmInput.trim().toUpperCase() === 'DELETE' ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
               >
-                <Trash2 size={14} />
-                {deleteLoading ? 'Deleting Order...' : 'Confirm & Delete Order'}
+                <Trash2 size={13} />
+                {deleteLoading ? 'Deleting...' : 'Confirm Delete'}
               </button>
             </div>
           </div>
@@ -1210,3 +1490,16 @@ export default function AdminOrdersPage() {
   );
 }
 
+export default function AdminOrdersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ display: 'inline-block', width: '32px', height: '32px', border: '3px solid #4F46E5', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      }
+    >
+      <AdminOrdersPageContent />
+    </Suspense>
+  );
+}
