@@ -532,14 +532,14 @@
   color: #FFFFFF;
 }
 
-/* Orders Table (Fits Desktop Screen With Zero Horizontal Scrolling) */
+/* Orders Table (Pro-Level SaaS Layout with Zero Button Clipping) */
 .admin-table-container {
   flex: 1;
   min-height: 280px;
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
   border-radius: 8px;
-  overflow-x: hidden !important; /* STRICTLY NO HORIZONTAL SCROLLBAR */
+  overflow-x: auto !important; /* Allows smooth horizontal scrolling on smaller screens so buttons are never cut off */
   overflow-y: auto;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
@@ -552,11 +552,11 @@
 
 .admin-orders-table {
   width: 100% !important;
-  max-width: 100% !important;
+  min-width: 1080px; /* Guarantees balanced column space without squishing buttons */
   border-collapse: collapse;
   text-align: left;
   font-size: 0.75rem;
-  table-layout: fixed; /* STRICT COLUMN WIDTH ENFORCEMENT */
+  table-layout: fixed;
 }
 
 .admin-orders-table thead th {
@@ -564,28 +564,26 @@
   top: 0;
   z-index: 10;
   background: #F8FAFC;
-  padding: 8px 6px;
+  padding: 10px 8px;
   font-weight: 700;
   color: #475569;
   font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
   border-bottom: 1px solid #E2E8F0;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .admin-orders-table tbody tr {
   border-bottom: 1px solid #F1F5F9;
-  transition: all var(--transition-fast);
-  min-height: 56px;
-  height: 58px; /* Comfortable double-line row spacing */
+  transition: background-color 0.15s ease, border-left-color 0.15s ease;
+  height: 58px;
   border-left: 3px solid transparent;
+  cursor: pointer; /* Entire row indicates clickability */
 }
 
 .admin-orders-table tbody tr:hover {
-  background-color: #F8FAFC;
+  background-color: #F8FAFC !important;
 }
 
 /* Status-based Left Border Accents & Subtle Row Tints */
@@ -626,7 +624,7 @@
 }
 
 .admin-orders-table td {
-  padding: 6px 6px;
+  padding: 6px 8px;
   color: #1E293B;
   vertical-align: middle;
   white-space: nowrap;
@@ -634,7 +632,23 @@
   text-overflow: ellipsis;
 }
 
-/* Client Info Strictly ONE LINE - Flex Auto-fit Without Overflow */
+.admin-orders-table td.td-actions {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  text-align: right;
+  padding-right: 14px;
+}
+
+.admin-order-row-clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-order-row-clickable:hover {
+  background-color: #F8FAFC !important;
+}
+
+/* Client Info Strictly ONE LINE */
 .client-oneline {
   display: flex;
   align-items: center;
@@ -788,106 +802,96 @@
   background: #E0E7FF;
 }
 
-.btn-shiprocket-action {
+.btn-assign-shiprocket {
   background: #4F46E5;
   color: #FFFFFF;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   padding: 3px 8px;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  transition: all var(--transition-fast);
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.btn-shiprocket-action:hover {
+.btn-assign-shiprocket:hover:not(:disabled) {
   background: #4338CA;
 }
 
-.btn-action-view {
-  background: #F1F5F9;
-  border: 1px solid #CBD5E1;
-  border-radius: 5px;
-  padding: 4px 8px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #1E293B;
-  cursor: pointer;
+.btn-assign-shiprocket:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Actions Button Group & Pro-level Dashboard Buttons */
+.actions-btn-group {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  transition: all var(--transition-fast);
+  justify-content: flex-end;
+  gap: 5px;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
-.btn-action-view:hover {
-  background: #E2E8F0;
-  color: #0F172A;
-}
-
-.btn-action-wa {
-  background: #F0FDF4;
-  border: 1px solid #BBF7D0;
-  border-radius: 5px;
-  padding: 4px 7px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #15803D;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  text-decoration: none;
-  transition: all var(--transition-fast);
-}
-
-.btn-action-wa:hover {
-  background: #DCFCE7;
-}
-
-.btn-action-delete {
-  background: #FFF1F2;
-  border: 1px solid #FFE4E6;
-  border-radius: 5px;
-  padding: 4px 7px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #E11D48;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  transition: all var(--transition-fast);
-}
-
-.btn-action-delete:hover {
-  background: #FFE4E6;
-  border-color: #FDA4AF;
-  color: #BE123C;
-}
-
-.btn-action-more {
-  background: #F8FAFC;
-  border: 1px solid #CBD5E1;
-  border-radius: 5px;
-  padding: 4px 6px;
-  font-size: 0.72rem;
-  font-weight: 800;
+.btn-action-pro {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 7px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
   color: #475569;
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  transition: all var(--transition-fast);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  text-decoration: none;
 }
 
-.btn-action-more:hover {
-  background: #E2E8F0;
-  color: #0F172A;
+.btn-action-pro:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn-action-pro:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.btn-action-pro.view:hover {
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+  color: #2563EB;
+}
+
+.btn-action-pro.print:hover {
+  background: #F0F9FF;
+  border-color: #BAE6FD;
+  color: #0284C7;
+}
+
+.btn-action-pro.whatsapp:hover {
+  background: #F0FDF4;
+  border-color: #BBF7D0;
+  color: #16A34A;
+}
+
+.btn-action-pro.delete:hover {
+  background: #FEF2F2;
+  border-color: #FECACA;
+  color: #DC2626;
+}
+
+.btn-action-pro.more:hover {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+  color: #1E293B;
 }
 
 .admin-actions-dropdown-menu {

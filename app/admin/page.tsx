@@ -580,14 +580,14 @@ function AdminOrdersPageContent() {
         <table className="admin-orders-table">
           <thead>
             <tr>
-              <th style={{ width: '13%' }}>ORDER &amp; DATE</th>
-              <th style={{ width: '25%' }}>CLIENT INFORMATION</th>
-              <th style={{ width: '13%' }}>PRODUCT / ITEMS</th>
+              <th style={{ width: '11%' }}>ORDER &amp; DATE</th>
+              <th style={{ width: '17%' }}>CLIENT INFORMATION</th>
+              <th style={{ width: '12%' }}>PRODUCT / ITEMS</th>
               <th style={{ width: '8%' }}>AMOUNT</th>
-              <th style={{ width: '9%' }}>PAYMENT</th>
-              <th style={{ width: '9%' }}>STATUS</th>
-              <th style={{ width: '12%' }}>SHIPROCKET COURIER</th>
-              <th style={{ width: '11%', textAlign: 'right' }}>ACTIONS</th>
+              <th style={{ width: '11%' }}>PAYMENT</th>
+              <th style={{ width: '10%' }}>STATUS</th>
+              <th style={{ width: '15%' }}>SHIPROCKET COURIER</th>
+              <th style={{ width: '16%', textAlign: 'right', paddingRight: '14px' }}>ACTIONS</th>
             </tr>
           </thead>
           <tbody>
@@ -604,19 +604,22 @@ function AdminOrdersPageContent() {
                 const isAssigningThis = assigningOrderId === order.id;
 
                 return (
-                  <tr key={order.id} className={`row-status-${statusClass}`}>
+                  <tr
+                    key={order.id}
+                    className={`row-status-${statusClass} admin-order-row-clickable`}
+                    onClick={() => openOrderModal(order)}
+                    title="Click row to view full order details"
+                  >
                     {/* COMBINED ORDER ID & DATE (2-LINE DOUBLE ROW FIT) */}
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                         <strong
                           style={{
                             color: '#2563EB',
-                            cursor: 'pointer',
                             fontFamily: 'ui-monospace, SFMono-Regular, monospace',
                             fontSize: '0.82rem',
                             fontWeight: 800
                           }}
-                          onClick={() => openOrderModal(order)}
                           title="Click to view complete order"
                         >
                           {order.orderNumber}
@@ -690,6 +693,7 @@ function AdminOrdersPageContent() {
                             rel="noopener noreferrer"
                             className="courier-badge"
                             title={`Track in Shiprocket: ${order.awbCode}`}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Truck size={10} /> {order.courierName || 'Shiprocket'}: ...{order.awbCode.slice(-7)}
                           </a>
@@ -699,7 +703,10 @@ function AdminOrdersPageContent() {
                           type="button"
                           className="btn-assign-shiprocket"
                           disabled={isAssigningThis}
-                          onClick={() => handleAssignToShiprocket(order.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAssignToShiprocket(order.id);
+                          }}
                           title="Move to Shiprocket immediately"
                         >
                           <Truck size={11} className={isAssigningThis ? 'animate-spin' : ''} />
@@ -708,45 +715,54 @@ function AdminOrdersPageContent() {
                       )}
                     </td>
 
-                    {/* ACTIONS (NEVER CUT OFF + MORE DROPDOWN) */}
-                    <td style={{ textAlign: 'right', overflow: 'visible', position: 'relative' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
+                    {/* ACTIONS (PRO DASHBOARD DESIGN + NEVER CUT OFF) */}
+                    <td className="td-actions" style={{ position: 'relative' }}>
+                      <div className="actions-btn-group">
                         <button
                           type="button"
-                          onClick={() => openOrderModal(order)}
-                          className="btn-action-view"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openOrderModal(order);
+                          }}
+                          className="btn-action-pro view"
                           title="Inspect Order Details"
                         >
-                          <Eye size={12} />
+                          <Eye size={13} />
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => printPackagingSlip(order)}
-                          className="btn-action-view"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            printPackagingSlip(order);
+                          }}
+                          className="btn-action-pro print"
                           title="Print Packaging Slip & Tax Invoice"
-                          style={{ color: '#0077C8' }}
                         >
-                          <Printer size={12} />
+                          <Printer size={13} />
                         </button>
 
                         <a
                           href={waUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="btn-action-wa"
-                          title="Chat on WhatsApp"
+                          onClick={(e) => e.stopPropagation()}
+                          className="btn-action-pro whatsapp"
+                          title="Chat with Customer on WhatsApp"
                         >
-                          <MessageSquare size={12} />
+                          <MessageSquare size={13} />
                         </a>
 
                         <button
                           type="button"
-                          onClick={() => openDeleteModal(order)}
-                          className="btn-action-delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteModal(order);
+                          }}
+                          className="btn-action-pro delete"
                           title="Delete Order"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={13} />
                         </button>
 
                         {/* MORE OPTIONS & STATUS CHANGER */}
@@ -757,7 +773,7 @@ function AdminOrdersPageContent() {
                               e.stopPropagation();
                               setActiveDropdownOrderId(prev => prev === order.id ? null : order.id);
                             }}
-                            className="btn-action-more"
+                            className="btn-action-pro more"
                             title="More Actions & Change Status"
                           >
                             <MoreHorizontal size={14} />
