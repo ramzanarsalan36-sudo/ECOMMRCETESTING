@@ -212,11 +212,11 @@ function AdminOrdersPageContent() {
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
-        order.id.toLowerCase().includes(q) ||
-        order.orderNumber.toLowerCase().includes(q) ||
-        order.customer.name.toLowerCase().includes(q) ||
-        order.customer.phone.includes(q) ||
-        order.customer.city.toLowerCase().includes(q) ||
+        (order.id && order.id.toLowerCase().includes(q)) ||
+        (order.orderNumber && order.orderNumber.toLowerCase().includes(q)) ||
+        (order.customer?.name && order.customer.name.toLowerCase().includes(q)) ||
+        (order.customer?.phone && order.customer.phone.includes(q)) ||
+        (order.customer?.city && order.customer.city.toLowerCase().includes(q)) ||
         (order.awbCode && order.awbCode.toLowerCase().includes(q)) ||
         (order.courierName && order.courierName.toLowerCase().includes(q))
       );
@@ -593,13 +593,15 @@ function AdminOrdersPageContent() {
           <tbody>
             {filteredOrders.length > 0 ? (
               filteredOrders.map(order => {
-                const statusClass = order.orderStatus.toLowerCase();
-                const paymentClass = order.paymentStatus.toLowerCase();
+                const statusClass = (order.orderStatus || 'pending').toLowerCase();
+                const paymentClass = (order.paymentStatus || 'pending').toLowerCase();
+                const customer = order.customer || { name: 'Customer', phone: '', city: '', state: '', pincode: '', address: '' };
+                const items = Array.isArray(order.items) ? order.items : [];
                 const waUrl = getWhatsAppUrl(
-                  order.customer.phone,
-                  order.customer.name,
+                  customer.phone,
+                  customer.name,
                   order.orderNumber,
-                  order.orderStatus
+                  order.orderStatus || 'Pending'
                 );
                 const isAssigningThis = assigningOrderId === order.id;
 
@@ -625,12 +627,12 @@ function AdminOrdersPageContent() {
                           {order.orderNumber}
                         </strong>
                         <span style={{ color: '#64748B', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-                          {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', {
                             day: 'numeric',
                             month: 'short',
                             hour: '2-digit',
                             minute: '2-digit'
-                          })}
+                          }) : 'Recent'}
                         </span>
                       </div>
                     </td>
@@ -639,24 +641,24 @@ function AdminOrdersPageContent() {
                     <td>
                       <div
                         className="client-oneline"
-                        title={`${order.customer.name} | ${order.customer.phone} | ${order.customer.city}, ${order.customer.state} (${order.customer.pincode})`}
+                        title={`${customer.name} | ${customer.phone} | ${customer.city}, ${customer.state} (${customer.pincode})`}
                       >
-                        <span className="client-avatar">{getInitials(order.customer.name)}</span>
-                        <span className="client-name">{order.customer.name}</span>
+                        <span className="client-avatar">{getInitials(customer.name)}</span>
+                        <span className="client-name">{customer.name}</span>
                         <span className="client-dot">·</span>
-                        <span className="client-phone">{order.customer.phone}</span>
+                        <span className="client-phone">{customer.phone}</span>
                         <span className="client-dot">·</span>
-                        <span className="client-city">{order.customer.city}</span>
+                        <span className="client-city">{customer.city}</span>
                       </div>
                     </td>
 
                     {/* Items (1 line) */}
                     <td>
-                      <div className="items-oneline" title={order.items.map(i => `${i.name} (x${i.qty})`).join(', ')}>
+                      <div className="items-oneline" title={items.map(i => `${i.name || 'Item'} (x${i.qty || 1})`).join(', ')}>
                         <span>
-                          {order.items.length === 1
-                            ? `${order.items[0].qty}x ${order.items[0].name.replace('HOPEKRAFT ', '').replace('Wooden ', '')}`
-                            : `${order.items.reduce((s, i) => s + i.qty, 0)} items`}
+                          {items.length === 1
+                            ? `${items[0].qty || 1}x ${(items[0].name || 'Product').replace('HOPEKRAFT ', '').replace('Wooden ', '')}`
+                            : `${items.reduce((s, i) => s + (i.qty || 1), 0)} items`}
                         </span>
                       </div>
                     </td>

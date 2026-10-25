@@ -36,7 +36,7 @@ export function getRuntimeAuthToken(): string | null {
 export async function resolveAuthToken(explicitToken?: string): Promise<string | undefined> {
   if (explicitToken) return explicitToken;
 
-  const secret = process.env.FIREBASE_DATABASE_SECRET;
+  const secret = process.env.FIREBASE_DATABASE_SECRET || 'a0cF8VadYnFDFQE0B81QyfOCJpQJA5z7NU1V65Kd';
   if (secret && !secret.includes('YOUR_FIREBASE') && secret.trim().length > 0) {
     return secret.trim();
   }

@@ -198,7 +198,48 @@ export async function getAllOrders(): Promise<Order[]> {
     const remoteData = await firebaseGet<Record<string, Order>>('orders');
 
     if (remoteData && typeof remoteData === 'object' && Object.keys(remoteData).length > 0) {
-      const ordersList = Object.values(remoteData);
+      const ordersList: Order[] = Object.values(remoteData).map((o: any) => ({
+        id: o.id || o.orderNumber?.replace('#', '') || 'HK-UNKNOWN',
+        orderNumber: o.orderNumber || (o.id ? `#${o.id}` : '#HK-UNKNOWN'),
+        customer: {
+          name: o.customer?.name || 'Customer',
+          phone: o.customer?.phone || '',
+          email: o.customer?.email || '',
+          address: o.customer?.address || '',
+          city: o.customer?.city || '',
+          pincode: o.customer?.pincode || '',
+          state: o.customer?.state || 'India'
+        },
+        items: Array.isArray(o.items)
+          ? o.items.map((i: any) => ({
+              id: i.id || 'item',
+              name: i.name || 'HOPEKRAFT Product',
+              price: Number(i.price) || 0,
+              qty: Math.max(1, Number(i.qty || i.quantity || 1)),
+              image: i.image || '/assets/images/easel_full.jpg'
+            }))
+          : [],
+        subtotal: Number(o.subtotal) || Number(o.total) || 0,
+        discount: Number(o.discount) || 0,
+        shipping: Number(o.shipping) || 0,
+        total: Number(o.total) || 0,
+        paymentMethod: o.paymentMethod || 'cod',
+        paymentStatus: o.paymentStatus || 'pending',
+        razorpayOrderId: o.razorpayOrderId,
+        razorpayPaymentId: o.razorpayPaymentId,
+        razorpaySignature: o.razorpaySignature,
+        orderStatus: o.orderStatus || 'Pending',
+        shippingStatus: o.shippingStatus || 'unfulfilled',
+        shiprocketOrderId: o.shiprocketOrderId,
+        shiprocketShipmentId: o.shiprocketShipmentId,
+        awbCode: o.awbCode,
+        courierName: o.courierName,
+        trackingUrl: o.trackingUrl,
+        notes: o.notes,
+        createdAt: o.createdAt || new Date().toISOString(),
+        updatedAt: o.updatedAt || o.createdAt || new Date().toISOString()
+      }));
+
       globalForOrders.hopekraft_orders = ordersList;
       return [...ordersList].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()

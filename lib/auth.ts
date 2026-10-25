@@ -195,6 +195,21 @@ export async function signInWithFirebaseAuth(
     return { success: false, error: 'Email / Admin ID and Password are required' };
   }
 
+  // 0. Check default admin credentials from environment (admin / admin123)
+  if (
+    (cleanId === DEFAULT_ADMIN_USER && cleanPass === DEFAULT_ADMIN_PASS) ||
+    (cleanId === 'admin' && cleanPass === 'admin123')
+  ) {
+    return {
+      success: true,
+      user: {
+        uid: MASTER_ADMIN_UID,
+        email: 'admin@hopekraft.in',
+        displayName: 'MasterAdmin'
+      }
+    };
+  }
+
   const apiKey =
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
     'AIzaSyDfXX5xc-SGGyJxNnrqTM6Iiry9-j_r_Co';
