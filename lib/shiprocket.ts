@@ -17,8 +17,13 @@ let tokenExpiresAt: number = 0;
  * Authenticates with Shiprocket API to obtain a Bearer JWT Token
  */
 export async function getShiprocketToken(): Promise<string | null> {
-  // If credentials are empty or placeholder, return null to use mock simulation
-  if (!SHIPROCKET_EMAIL || !SHIPROCKET_PASSWORD || SHIPROCKET_EMAIL.includes('shipping@hopekraft.in')) {
+  // If credentials are empty or placeholder/demo, return null to use fast mock simulation
+  if (
+    !SHIPROCKET_EMAIL ||
+    !SHIPROCKET_PASSWORD ||
+    SHIPROCKET_PASSWORD.includes('demo_password') ||
+    SHIPROCKET_EMAIL.includes('shipping@hopekraft.in')
+  ) {
     return null;
   }
 

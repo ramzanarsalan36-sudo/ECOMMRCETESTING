@@ -124,22 +124,23 @@ export async function POST(req: NextRequest) {
       shippingStatus: 'unfulfilled'
     });
 
-    // 4. Automated Shiprocket Order Manifesting (only for verified orders)
-    try {
-      const shipment = await createShiprocketShipment(newOrder);
-      if (shipment.success) {
-        await updateOrder(newOrder.id, {
-          shippingStatus: 'manifested',
-          shiprocketOrderId: shipment.shiprocketOrderId,
-          shiprocketShipmentId: shipment.shiprocketShipmentId,
-          awbCode: shipment.awbCode,
-          courierName: shipment.courierName,
-          trackingUrl: shipment.trackingUrl
-        });
-      }
-    } catch (shipErr) {
-      console.warn('Shiprocket background auto-dispatch notice:', shipErr);
-    }
+    // 4. Automated Shiprocket Order Manifesting (Non-blocking background execution for instant checkout)
+    createShiprocketShipment(newOrder)
+      .then(async (shipment) => {
+        if (shipment.success) {
+          await updateOrder(newOrder.id, {
+            shippingStatus: 'manifested',
+            shiprocketOrderId: shipment.shiprocketOrderId,
+            shiprocketShipmentId: shipment.shiprocketShipmentId,
+            awbCode: shipment.awbCode,
+            courierName: shipment.courierName,
+            trackingUrl: shipment.trackingUrl
+          });
+        }
+      })
+      .catch((shipErr) => {
+        console.warn('Shiprocket background auto-dispatch notice:', shipErr);
+      });
 
     return NextResponse.json({
       success: true,

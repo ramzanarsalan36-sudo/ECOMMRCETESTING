@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { HOPEKRAFT_PRODUCTS } from '@/lib/products';
-import { Lock, Zap, Package, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Lock, Zap, Package, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 
 function CheckoutContent() {
   const router = useRouter();
@@ -564,7 +564,14 @@ function CheckoutContent() {
               }}
             >
               {loading ? (
-                <span>Placing Your Order...</span>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>
+                    {paymentMethod === 'online'
+                      ? 'Initializing Secure Gateway...'
+                      : 'Confirming Order & Securing Delivery...'}
+                  </span>
+                </div>
               ) : paymentMethod === 'online' ? (
                 <>
                   <Zap size={18} fill="#FFD700" color="#FFD700" />
