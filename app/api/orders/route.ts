@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllOrders, createOrder, updateOrder } from '@/lib/db';
 import { verifyAdminToken, ADMIN_COOKIE_NAME } from '@/lib/auth';
-import { createShiprocketShipment } from '@/lib/shiprocket';
 import { verifyRazorpaySignature } from '@/lib/razorpay';
 import { HOPEKRAFT_PRODUCTS } from '@/lib/products';
 
@@ -124,23 +123,8 @@ export async function POST(req: NextRequest) {
       shippingStatus: 'unfulfilled'
     });
 
-    // 4. Automated Shiprocket Order Manifesting (Non-blocking background execution for instant checkout)
-    createShiprocketShipment(newOrder)
-      .then(async (shipment) => {
-        if (shipment.success) {
-          await updateOrder(newOrder.id, {
-            shippingStatus: 'manifested',
-            shiprocketOrderId: shipment.shiprocketOrderId,
-            shiprocketShipmentId: shipment.shiprocketShipmentId,
-            awbCode: shipment.awbCode,
-            courierName: shipment.courierName,
-            trackingUrl: shipment.trackingUrl
-          });
-        }
-      })
-      .catch((shipErr) => {
-        console.warn('Shiprocket background auto-dispatch notice:', shipErr);
-      });
+    // NOTE: Order is saved safely as 'unfulfilled'.
+    // It will ONLY be moved to Shiprocket when the Admin verifies and clicks "Assign to Shiprocket" in /admin.
 
     return NextResponse.json({
       success: true,
