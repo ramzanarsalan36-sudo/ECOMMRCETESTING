@@ -133,6 +133,18 @@ export default function HomePage() {
                   <Link href="#bestsellers" className="hero-desktop-primary-btn">
                     Explore Wooden Toys <ArrowRight size={15} />
                   </Link>
+                  <a
+                    href="https://wa.me/918554091926?text=Hi%20HOPEKRAFT%2C%20I%20have%20an%20order%20inquiry%20regarding%20your%20wooden%20toys."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hero-desktop-whatsapp-btn"
+                    title="Order Inquiry on WhatsApp: 8554091926"
+                  >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                    </svg>
+                    <span>Order Inquiry</span>
+                  </a>
                   <Link href="#reviews" className="hero-desktop-secondary-btn">
                     ⭐ 5,000+ Parent Stories
                   </Link>
@@ -156,6 +168,12 @@ export default function HomePage() {
                         />
                       </div>
                     ))}
+                  </div>
+
+                  {/* Floating Trust Pill (Desktop Only) */}
+                  <div className="hero-desktop-floating-badge">
+                    <span className="hero-floating-dot"></span>
+                    <span>Montessori Certified • BIS Approved</span>
                   </div>
 
                   {/* Navigation Arrows */}
@@ -185,9 +203,24 @@ export default function HomePage() {
                       ))}
                     </div>
 
-                    <Link href="#bestsellers" className="hero-shop-btn">
-                      Shop Now <ArrowRight size={14} />
-                    </Link>
+                    <div className="hero-action-btns">
+                      <a
+                        href="https://wa.me/918554091926?text=Hi%20HOPEKRAFT%2C%20I%20have%20an%20order%20inquiry%20regarding%20your%20wooden%20toys."
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hero-whatsapp-circle-btn"
+                        title="Chat on WhatsApp: 8554091926 (Order Inquiry)"
+                        aria-label="Order Inquiry on WhatsApp: 8554091926"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF">
+                          <path fillRule="evenodd" clipRule="evenodd" d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.763.46 3.483 1.332 5.001L2 22l5.122-1.312a9.96 9.96 0 0 0 4.882 1.316h.004c5.523 0 10.003-4.48 10.003-10.004C22.011 6.48 17.528 2 12.004 2zm5.823 14.195c-.244.685-1.42 1.309-1.954 1.393-.524.082-1.208.118-3.489-.824-2.736-1.13-4.498-3.896-4.634-4.077-.137-.181-1.107-1.474-1.107-2.81 0-1.337.7-1.994.95-2.263.248-.27.544-.338.725-.338.181 0 .363.003.522.012.168.01.394-.064.617.47.23.551.783 1.91.852 2.05.069.14.116.304.023.49-.092.185-.138.3-.274.463-.137.164-.288.366-.412.492-.138.14-.282.292-.121.569.16.276.712 1.173 1.528 1.9 1.05.938 1.936 1.228 2.212 1.365.275.137.435.115.596-.07.161-.184.689-.803.873-1.079.184-.276.368-.23.619-.138.253.092 1.606.757 1.882.895.276.138.46.207.529.322.069.115.069.667-.175 1.352z"/>
+                        </svg>
+                      </a>
+
+                      <Link href="#bestsellers" className="hero-shop-btn">
+                        Shop Now <ArrowRight size={14} />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>

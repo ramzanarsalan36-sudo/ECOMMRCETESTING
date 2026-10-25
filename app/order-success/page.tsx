@@ -14,9 +14,68 @@ import {
   Copy,
   Check,
   ShieldCheck,
-  Package
+  Package,
+  Volume2
 } from 'lucide-react';
 import { printPackagingSlip } from '@/lib/packagingSlip';
+
+// Studio-Grade Celebratory Order Confirmation Sound (Audio File + Web Audio Synthesis Fallback)
+function playOrderSuccessSound() {
+  try {
+    // 1. Primary: Rich acoustic stereo chime (Google Pay / Modern E-Commerce Bell)
+    const audio = new Audio('/sounds/success.wav');
+    audio.volume = 0.9;
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((e) => {
+        // 2. Fallback: Inbuilt Web Audio API multi-harmonic synthesizer
+        playSynthesizedChime();
+      });
+    }
+  } catch {
+    playSynthesizedChime();
+  }
+}
+
+function playSynthesizedChime() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    const t = ctx.currentTime;
+    // Bell 1: E5 @ 659Hz
+    const osc1 = ctx.createOscillator();
+    const g1 = ctx.createGain();
+    osc1.type = 'triangle';
+    osc1.frequency.setValueAtTime(659.25, t);
+    g1.gain.setValueAtTime(0.001, t);
+    g1.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
+    g1.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    osc1.connect(g1);
+    g1.connect(ctx.destination);
+    osc1.start(t);
+    osc1.stop(t + 0.6);
+
+    // Bell 2: B5 @ 987Hz & E6 @ 1318Hz (Celebration crescendo)
+    const osc2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(987.77, t + 0.14);
+    g2.gain.setValueAtTime(0.001, t + 0.14);
+    g2.gain.exponentialRampToValueAtTime(0.4, t + 0.16);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    osc2.connect(g2);
+    g2.connect(ctx.destination);
+    osc2.start(t + 0.14);
+    osc2.stop(t + 1.2);
+  } catch (err) {
+    console.warn('Audio fallback notice:', err);
+  }
+}
 
 function OrderSuccessContent() {
   const searchParams = useSearchParams();
@@ -27,9 +86,14 @@ function OrderSuccessContent() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    // Play celebratory sound as soon as confirmation page mounts!
+    const timer = setTimeout(() => {
+      playOrderSuccessSound();
+    }, 200);
+
     if (!orderId) {
       setLoading(false);
-      return;
+      return () => clearTimeout(timer);
     }
 
     fetch(`/api/orders/${orderId}`)
@@ -41,6 +105,8 @@ function OrderSuccessContent() {
       })
       .catch(err => console.error('Failed to load order', err))
       .finally(() => setLoading(false));
+
+    return () => clearTimeout(timer);
   }, [orderId]);
 
   const displayOrder: Order = order || {
@@ -157,6 +223,29 @@ function OrderSuccessContent() {
                 strokeLinejoin="round"
               />
             </svg>
+          </div>
+          <div style={{ marginTop: '8px' }}>
+            <button
+              type="button"
+              onClick={() => playOrderSuccessSound()}
+              title="Click to replay confirmation chime"
+              style={{
+                background: '#ECFDF5',
+                border: '1px solid #A7F3D0',
+                color: '#065F46',
+                borderRadius: '16px',
+                padding: '3px 10px',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+            >
+              <Volume2 size={13} color="#059669" />
+              <span>Order Confirmed ♪</span>
+            </button>
           </div>
         </div>
 

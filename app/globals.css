@@ -2272,28 +2272,67 @@ body {
   box-shadow: 0 6px 18px rgba(140, 67, 32, 0.4);
 }
 
+.hero-action-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.hero-whatsapp-circle-btn {
+  width: 35px;
+  height: 35px;
+  min-width: 35px;
+  border-radius: 50%;
+  background: #25D366; /* Official WhatsApp Green */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.45);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.hero-whatsapp-circle-btn:hover {
+  background: #20BA5A;
+  transform: scale(1.12);
+  box-shadow: 0 6px 18px rgba(37, 211, 102, 0.6);
+}
+
+.hero-desktop-whatsapp-btn {
+  display: none;
+}
+
+.hero-desktop-floating-badge {
+  display: none;
+}
+
 /* PC Desktop Hero Styling: Full-Width Rich Showcase (Mobile is 100% untouched) */
 @media (min-width: 768px) {
   .hero-gradient-section {
     padding: 0;
     width: 100%;
+    position: relative;
   }
 
   .hero-gradient-bg {
     width: 100%;
-    background: linear-gradient(135deg, #FFF8F0 0%, #FDECD2 35%, #F5D5B0 70%, #E8C49E 100%);
+    background: radial-gradient(circle at 15% 30%, #FFFDF9 0%, #FDF3E5 40%, #F5DEBE 85%, #ECD0A8 100%);
     border-radius: 0 !important;
     overflow: hidden;
+    position: relative;
   }
 
   .hero-responsive-layout {
     display: grid;
-    grid-template-columns: 1.2fr 1fr;
+    grid-template-columns: 1.15fr 0.95fr;
     align-items: center;
-    gap: 52px;
-    max-width: 1400px;
+    gap: 48px;
+    max-width: 1320px;
     margin: 0 auto;
-    padding: 44px 56px;
+    padding: 42px 48px 46px;
     box-sizing: border-box;
   }
 
@@ -2301,29 +2340,39 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    max-width: 620px;
   }
 
   .hero-human-handwrite-tag {
     font-family: 'Caveat', cursive, sans-serif !important;
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     font-weight: 700;
     color: #8C4320;
     letter-spacing: 0.3px;
-    margin-bottom: -2px;
+    background: rgba(140, 67, 32, 0.08);
+    border: 1px solid rgba(140, 67, 32, 0.16);
+    padding: 4px 16px;
+    border-radius: 9999px;
+    width: fit-content;
+    box-shadow: 0 2px 8px rgba(140, 67, 32, 0.06);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .hero-desktop-heading {
     font-family: 'Fredoka', 'Poppins', sans-serif;
-    font-size: 2.45rem;
-    font-weight: 600;
-    color: #1D120C;
-    line-height: 1.15;
+    font-size: 2.75rem;
+    font-weight: 700;
+    color: #1A1009;
+    line-height: 1.14;
+    letter-spacing: -0.025em;
     margin: 0;
   }
 
   .hero-desktop-description {
     font-size: 0.96rem;
-    color: #55443B;
+    color: #58463D;
     line-height: 1.65;
     margin: 0;
     font-weight: 400;
@@ -2332,26 +2381,38 @@ body {
   .hero-human-checklist {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin: 4px 0;
-    background: rgba(255, 255, 255, 0.7);
-    padding: 14px 18px;
-    border-radius: 12px;
-    border: 1px solid rgba(215, 195, 175, 0.55);
+    gap: 11px;
+    margin: 4px 0 2px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 16px 20px;
+    border-radius: 18px;
+    border: 1.5px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 12px 30px -8px rgba(110, 65, 30, 0.09), 0 2px 6px rgba(0, 0, 0, 0.03);
   }
 
   .hero-human-check-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 0.84rem;
-    color: #38271E;
+    gap: 12px;
+    font-size: 0.88rem;
+    color: #2D1D14;
     line-height: 1.4;
   }
 
   .hero-check-bullet {
-    font-size: 1.1rem;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: #FFF7EE;
+    border: 1px solid rgba(140, 67, 32, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
     flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(140, 67, 32, 0.06);
   }
 
   .hero-desktop-cta-row {
@@ -2365,62 +2426,99 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: #8C4320;
+    background: linear-gradient(135deg, #8C4320 0%, #68290D 100%);
     color: #FFFFFF !important;
-    font-size: 0.92rem;
-    font-weight: 600;
-    padding: 11px 26px;
+    font-size: 0.94rem;
+    font-weight: 700;
+    padding: 13px 28px;
     border-radius: 9999px;
     text-decoration: none;
-    box-shadow: 0 4px 14px rgba(140, 67, 32, 0.28);
-    transition: all 0.2s ease;
+    box-shadow: 0 6px 20px rgba(140, 67, 32, 0.35);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .hero-desktop-primary-btn:hover {
-    background: #733416;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(140, 67, 32, 0.38);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(140, 67, 32, 0.45);
+    background: linear-gradient(135deg, #7A3515 0%, #521E08 100%);
+  }
+
+  .hero-desktop-whatsapp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: #25D366;
+    color: #FFFFFF !important;
+    font-size: 0.90rem;
+    font-weight: 700;
+    padding: 13px 22px;
+    border-radius: 9999px;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(37, 211, 102, 0.3);
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+  }
+
+  .hero-desktop-whatsapp-btn:hover {
+    background: #1EBE5B;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(37, 211, 102, 0.42);
   }
 
   .hero-desktop-secondary-btn {
     display: inline-flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.9);
+    background: #FFFFFF;
     color: #382012 !important;
-    font-size: 0.88rem;
-    font-weight: 500;
-    padding: 11px 22px;
+    font-size: 0.90rem;
+    font-weight: 600;
+    padding: 13px 22px;
     border-radius: 9999px;
     text-decoration: none;
-    border: 1px solid #D8CABE;
-    transition: all 0.2s ease;
+    border: 1.5px solid #D8CABE;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .hero-desktop-secondary-btn:hover {
-    background: #FFFFFF;
+    background: #FFFDF9;
     border-color: #8C4320;
     color: #8C4320 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(140, 67, 32, 0.14);
   }
 
   .hero-carousel-wrapper {
-    max-width: 520px;
+    max-width: 490px;
     width: 100%;
     margin: 0 auto;
     position: relative;
-    box-shadow: 0 12px 36px rgba(50, 30, 20, 0.12);
   }
 
   .hero-carousel-container {
     width: 100%;
     aspect-ratio: 1 / 1 !important;
-    border-radius: 0 !important;
+    border-radius: 24px !important; /* Sleek modern rounded card for desktop */
+    border: 6px solid #FFFFFF !important;
+    box-shadow: 0 24px 54px -12px rgba(70, 35, 12, 0.24), 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+    overflow: hidden !important;
   }
 
   .hero-carousel-arrow {
     width: 44px;
     height: 44px;
     background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+    backdrop-filter: blur(8px);
+    border-radius: 50%;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16);
+    transition: all 0.2s ease;
+  }
+
+  .hero-carousel-arrow:hover {
+    background: #FFFFFF;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
   }
 
   .hero-carousel-arrow-left {
@@ -2429,6 +2527,41 @@ body {
 
   .hero-carousel-arrow-right {
     right: 14px;
+  }
+
+  .hero-bottom-bar {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(18, 9, 4, 0.75) 100%);
+    padding: 14px 18px 16px;
+  }
+
+  .hero-desktop-floating-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 6;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #4A2B15;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+  }
+
+  .hero-floating-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #16A34A;
+    display: inline-block;
   }
 }
 
