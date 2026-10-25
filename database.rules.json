@@ -4,7 +4,7 @@
       ".read": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2'",
       "$orderId": {
         ".read": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2'",
-        ".write": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2' || (!data.exists() && newData.exists())",
+        ".write": "auth != null && auth.uid === 'kcca315tMqYP22OeU8VBECh4VRq2'",
         ".validate": "newData.hasChildren(['id', 'customer', 'items', 'total', 'paymentMethod'])"
       }
     },

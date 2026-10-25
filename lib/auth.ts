@@ -6,7 +6,23 @@
 
 const DEFAULT_ADMIN_USER = process.env.ADMIN_USERNAME || 'admin';
 const DEFAULT_ADMIN_PASS = process.env.ADMIN_PASSWORD || 'admin123';
-const JWT_SECRET = process.env.ADMIN_JWT_SECRET || 'hopekraft_super_secure_jwt_secret_key_change_in_production_8943275923';
+// Secure JWT Secret Resolution
+let runtimeSecureSecret: string | null = null;
+function getSecretString(): string {
+  if (process.env.ADMIN_JWT_SECRET && process.env.ADMIN_JWT_SECRET.trim().length > 0) {
+    return process.env.ADMIN_JWT_SECRET.trim();
+  }
+  if (process.env.NODE_ENV === 'production') {
+    if (!runtimeSecureSecret) {
+      const randomBytes = new Uint8Array(32);
+      crypto.getRandomValues(randomBytes);
+      runtimeSecureSecret = Array.from(randomBytes, b => b.toString(16).padStart(2, '0')).join('');
+      console.warn('[SECURITY NOTICE] ADMIN_JWT_SECRET env var is missing in production. Generated an ephemeral runtime key for this instance to prevent static key exploitation.');
+    }
+    return runtimeSecureSecret;
+  }
+  return 'hopekraft_dev_secret_jwt_key_local_only';
+}
 
 export const ADMIN_COOKIE_NAME = 'hopekraft_admin_token';
 
@@ -41,7 +57,8 @@ let cachedKey: CryptoKey | null = null;
 async function getCryptoKey(): Promise<CryptoKey> {
   if (cachedKey) return cachedKey;
   const encoder = new TextEncoder();
-  const keyData = encoder.encode(JWT_SECRET);
+  const secret = getSecretString();
+  const keyData = encoder.encode(secret);
   cachedKey = await crypto.subtle.importKey(
     'raw',
     keyData,

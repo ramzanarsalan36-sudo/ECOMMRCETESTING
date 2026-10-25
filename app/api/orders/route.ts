@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllOrders, createOrder, updateOrder } from '@/lib/db';
 import { verifyAdminToken, ADMIN_COOKIE_NAME } from '@/lib/auth';
 import { createShiprocketShipment } from '@/lib/shiprocket';
+import { verifyRazorpaySignature } from '@/lib/razorpay';
+import { HOPEKRAFT_PRODUCTS } from '@/lib/products';
 
 export async function GET(req: NextRequest) {
   // Admin-only protection
@@ -25,12 +27,7 @@ export async function POST(req: NextRequest) {
     const {
       customer,
       items,
-      subtotal,
-      discount = 0,
-      shipping = 0,
-      total,
       paymentMethod = 'cod',
-      paymentStatus = 'pending',
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature
@@ -51,11 +48,58 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Determine initial order status
-    const isPaid = paymentStatus === 'paid' || (paymentMethod === 'razorpay' && !!razorpayPaymentId);
+    // 1. Server-side price recalculation (Never trust client prices)
+    let verifiedSubtotal = 0;
+    const verifiedItems = items.map((item: any) => {
+      const prod = HOPEKRAFT_PRODUCTS[item.id];
+      const realPrice = prod ? prod.price : (Number(item.price) || 3499);
+      const qty = Math.max(1, parseInt(item.qty || item.quantity || 1, 10));
+      verifiedSubtotal += realPrice * qty;
+      return {
+        id: item.id,
+        name: prod ? prod.name : (item.name || 'HOPEKRAFT Product'),
+        price: realPrice,
+        qty,
+        image: prod ? prod.image : (item.image || '/assets/images/easel_full.jpg')
+      };
+    });
+
+    const isOnlinePayment = paymentMethod === 'online' || paymentMethod === 'razorpay';
+    const verifiedDiscount = isOnlinePayment ? 100 : 0;
+    const verifiedShipping = 0;
+    const verifiedTotal = Math.max(0, verifiedSubtotal - verifiedDiscount + verifiedShipping);
+
+    // 2. Strict Payment Signature Verification for Online Payments
+    let isPaid = false;
+    if (isOnlinePayment) {
+      if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+        return NextResponse.json(
+          { success: false, error: 'Online payment requires valid Razorpay payment ID, Order ID, and signature.' },
+          { status: 400 }
+        );
+      }
+
+      const isValid = await verifyRazorpaySignature(
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature
+      );
+
+      if (!isValid) {
+        return NextResponse.json(
+          { success: false, error: 'Payment verification failed: Invalid or forged Razorpay signature.' },
+          { status: 400 }
+        );
+      }
+
+      isPaid = true;
+    } else {
+      isPaid = false;
+    }
+
     const initialOrderStatus = isPaid ? 'Confirmed' : 'Pending';
 
-    // 1. Create order in Database
+    // 3. Create order in Database with verified prices
     const newOrder = await createOrder({
       customer: {
         name: customer.name.trim(),
@@ -64,23 +108,23 @@ export async function POST(req: NextRequest) {
         address: customer.address.trim(),
         city: customer.city.trim(),
         pincode: customer.pincode?.trim() || '560038',
-        state: customer.state?.trim() || 'Karnataka'
+        state: customer.state?.trim() || 'India'
       },
-      items,
-      subtotal: subtotal || total,
-      discount,
-      shipping,
-      total,
-      paymentMethod,
+      items: verifiedItems,
+      subtotal: verifiedSubtotal,
+      discount: verifiedDiscount,
+      shipping: verifiedShipping,
+      total: verifiedTotal,
+      paymentMethod: isOnlinePayment ? 'razorpay' : 'cod',
       paymentStatus: isPaid ? 'paid' : 'pending',
-      razorpayOrderId,
-      razorpayPaymentId,
-      razorpaySignature,
+      razorpayOrderId: razorpayOrderId || undefined,
+      razorpayPaymentId: razorpayPaymentId || undefined,
+      razorpaySignature: razorpaySignature || undefined,
       orderStatus: initialOrderStatus,
       shippingStatus: 'unfulfilled'
     });
 
-    // 2. Automated Shiprocket Order Manifesting
+    // 4. Automated Shiprocket Order Manifesting (only for verified orders)
     try {
       const shipment = await createShiprocketShipment(newOrder);
       if (shipment.success) {

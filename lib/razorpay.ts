@@ -91,9 +91,22 @@ export async function verifyRazorpaySignature(
     return false;
   }
 
-  // Simulation pass-through for test order tokens
-  if (razorpaySignature.startsWith('test_sim_') || (!RAZORPAY_KEY_SECRET || RAZORPAY_KEY_SECRET.includes('mock_secret'))) {
-    return true;
+  // In production, NEVER bypass signature verification under any circumstance
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction) {
+    if (!RAZORPAY_KEY_SECRET || RAZORPAY_KEY_SECRET.includes('mock_secret')) {
+      console.error('[SECURITY ERROR] RAZORPAY_KEY_SECRET is not configured or is a mock key in production!');
+      return false;
+    }
+    if (razorpaySignature.startsWith('test_sim_')) {
+      console.error('[SECURITY ALERT] test_sim_ signature attempted in production!');
+      return false;
+    }
+  } else {
+    // Only allow simulation in local development when real keys are not configured
+    if ((!RAZORPAY_KEY_SECRET || RAZORPAY_KEY_SECRET.includes('mock_secret')) && razorpaySignature.startsWith('test_sim_')) {
+      return true;
+    }
   }
 
   try {

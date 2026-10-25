@@ -64,48 +64,133 @@ function CheckoutContent() {
 
     setLoading(true);
 
-    const orderPayload = {
-      customer: {
-        name: name.trim(),
-        phone: cleanPhone,
-        email: email.trim() || 'hopekraft26@gmail.com',
-        address: address.trim(),
-        city: city.trim(),
-        pincode: pincode.trim(),
-        state: 'India'
-      },
-      items: [
-        {
-          id: directProduct.id,
-          name: directProduct.name,
-          price: directProduct.price,
-          qty: 1,
-          image: directProduct.image
-        }
-      ],
-      subtotal: directProduct.price,
-      discount: discountAmount,
-      shipping: 0,
-      total: effectiveTotal,
-      paymentMethod,
-      paymentStatus: paymentMethod === 'online' ? 'paid' : 'pending'
+    const customerDetails = {
+      name: name.trim(),
+      phone: cleanPhone,
+      email: email.trim() || 'hopekraft26@gmail.com',
+      address: address.trim(),
+      city: city.trim(),
+      pincode: pincode.trim(),
+      state: 'India'
     };
 
+    const orderItems = [
+      {
+        id: directProduct.id,
+        name: directProduct.name,
+        price: directProduct.price,
+        qty: 1,
+        image: directProduct.image
+      }
+    ];
+
+    // --- CASE A: CASH ON DELIVERY ---
+    if (paymentMethod === 'cod') {
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer: customerDetails,
+            items: orderItems,
+            paymentMethod: 'cod'
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.order) {
+          throw new Error(data.error || 'Failed to place COD order');
+        }
+
+        router.push(`/order-success?orderId=${data.order.id}`);
+      } catch (err: any) {
+        setFormError(err.message || 'Something went wrong while placing COD order.');
+        setLoading(false);
+      }
+      return;
+    }
+
+    // --- CASE B: ONLINE PAYMENT VIA RAZORPAY ---
     try {
-      const res = await fetch('/api/orders', {
+      // 1. Create secure order on server (price verified server-side)
+      const createRes = await fetch('/api/payment/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderPayload)
+        body: JSON.stringify({
+          productId: directProduct.id,
+          paymentMethod: 'online'
+        })
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.order) {
-        throw new Error(data.error || 'Failed to place order');
+      const createData = await createRes.json();
+      if (!createRes.ok || !createData.order) {
+        throw new Error(createData.error || 'Could not initialize payment gateway.');
       }
 
-      router.push(`/order-success?orderId=${data.order.id}`);
-    } catch (err: any) {
-      setFormError(err.message || 'Something went wrong. Please try again.');
+      // Check if Razorpay SDK loaded
+      if (typeof window !== 'undefined' && (window as any).Razorpay) {
+        const rzpOptions = {
+          key: createData.keyId,
+          amount: createData.order.amount,
+          currency: 'INR',
+          name: 'HOPEKRAFT Toys',
+          description: directProduct.name,
+          image: directProduct.image,
+          order_id: createData.order.id,
+          prefill: {
+            name: customerDetails.name,
+            contact: customerDetails.phone,
+            email: customerDetails.email
+          },
+          theme: {
+            color: '#15803D'
+          },
+          handler: async function (response: any) {
+            // 2. Razorpay payment succeeded, send cryptographic proof to server
+            try {
+              const confirmRes = await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  customer: customerDetails,
+                  items: orderItems,
+                  paymentMethod: 'online',
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature
+                })
+              });
+
+              const confirmData = await confirmRes.json();
+              if (!confirmRes.ok || !confirmData.order) {
+                throw new Error(confirmData.error || 'Payment was received but order verification failed.');
+              }
+
+              router.push(`/order-success?orderId=${confirmData.order.id}`);
+            } catch (confirmErr: any) {
+              setFormError(confirmErr.message || 'Error verifying payment with server.');
+              setLoading(false);
+            }
+          },
+          modal: {
+            ondismiss: function () {
+              setLoading(false);
+            }
+          }
+        };
+
+        const rzp = new (window as any).Razorpay(rzpOptions);
+        rzp.on('payment.failed', function (failedResp: any) {
+          setFormError(failedResp.error?.description || 'Payment was unsuccessful. Please try again.');
+          setLoading(false);
+        });
+        rzp.open();
+      } else {
+        // Fallback if Razorpay SDK script failed to load in browser
+        throw new Error('Razorpay SDK is still loading. Please refresh and try again.');
+      }
+    } catch (onlineErr: any) {
+      setFormError(onlineErr.message || 'Payment initialization error.');
       setLoading(false);
     }
   };
