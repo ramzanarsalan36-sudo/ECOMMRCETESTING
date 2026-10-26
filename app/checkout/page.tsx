@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { HOPEKRAFT_PRODUCTS } from '@/lib/products';
-import { Lock, Zap, Package, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
+import { Lock, Zap, Package, ShieldCheck, ArrowRight, Loader2, MessageCircle, CheckCircle2, X } from 'lucide-react';
 
 function CheckoutContent() {
   const router = useRouter();
@@ -32,9 +32,145 @@ function CheckoutContent() {
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // [WHATSAPP_INTEGRATION] 4-Digit COD OTP Verification States
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpSuccessMsg, setOtpSuccessMsg] = useState<string | null>(null);
+  const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
+  const [resendCountdown, setResendCountdown] = useState(0);
+
+  // Countdown timer for OTP resend
+  React.useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCountdown(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCountdown]);
+
   // ₹100 Instant Discount for Online Payment
   const discountAmount = paymentMethod === 'online' ? 100 : 0;
   const effectiveTotal = Math.max(0, directProduct.price - discountAmount);
+
+  // [WHATSAPP_INTEGRATION] Step 1: Send 4-digit OTP via WhatsApp
+  const initiateCodOtp = async (cleanPhone: string) => {
+    setLoading(true);
+    setOtpError(null);
+    setOtpSuccessMsg(null);
+    setOtpValue('');
+
+    try {
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send WhatsApp verification OTP.');
+      }
+
+      setVerificationToken(data.verificationToken);
+      setOtpSuccessMsg(data.message || '4-digit verification code sent to your WhatsApp!');
+      if (data.devCode) {
+        setDevOtpHint(data.devCode);
+      }
+      setShowOtpModal(true);
+      setResendCountdown(30);
+    } catch (err: any) {
+      setFormError(err.message || 'Failed to send WhatsApp OTP.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // [WHATSAPP_INTEGRATION] Step 2: Verify 4-digit OTP and place COD order
+  const handleVerifyOtpAndPlaceCodOrder = async () => {
+    if (!otpValue || otpValue.trim().length !== 4) {
+      setOtpError('Please enter the 4-digit code');
+      return;
+    }
+
+    setOtpLoading(true);
+    setOtpError(null);
+
+    const cleanPhone = phone.replace(/\D/g, '');
+
+    try {
+      const verifyRes = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: cleanPhone,
+          otp: otpValue.trim(),
+          verificationToken
+        })
+      });
+
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok || !verifyData.verified) {
+        throw new Error(verifyData.error || 'Incorrect OTP code. Please check your WhatsApp.');
+      }
+
+      // Verified! Now create order in database
+      await executeCreateCodOrder(verifyData.codToken);
+    } catch (err: any) {
+      setOtpError(err.message || 'Verification failed. Please try again.');
+      setOtpLoading(false);
+    }
+  };
+
+  // Execute creating the COD order once verified
+  const executeCreateCodOrder = async (codToken?: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const customerDetails = {
+      name: name.trim(),
+      phone: cleanPhone,
+      email: email.trim() || 'hopekraft26@gmail.com',
+      address: address.trim(),
+      city: city.trim(),
+      pincode: pincode.trim(),
+      state: 'India'
+    };
+
+    const orderItems = [
+      {
+        id: directProduct.id,
+        name: directProduct.name,
+        price: directProduct.price,
+        qty: 1,
+        image: directProduct.image
+      }
+    ];
+
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: customerDetails,
+          items: orderItems,
+          paymentMethod: 'cod',
+          codToken
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.order) {
+        throw new Error(data.error || 'Failed to place COD order');
+      }
+
+      setShowOtpModal(false);
+      router.push(`/order-success?orderId=${data.order.id}`);
+    } catch (err: any) {
+      setOtpError(err.message || 'Something went wrong while placing COD order.');
+      setOtpLoading(false);
+    }
+  };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,29 +220,9 @@ function CheckoutContent() {
       }
     ];
 
-    // --- CASE A: CASH ON DELIVERY ---
+    // --- CASE A: CASH ON DELIVERY WITH WHATSAPP 4-DIGIT OTP ---
     if (paymentMethod === 'cod') {
-      try {
-        const res = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            customer: customerDetails,
-            items: orderItems,
-            paymentMethod: 'cod'
-          })
-        });
-
-        const data = await res.json();
-        if (!res.ok || !data.order) {
-          throw new Error(data.error || 'Failed to place COD order');
-        }
-
-        router.push(`/order-success?orderId=${data.order.id}`);
-      } catch (err: any) {
-        setFormError(err.message || 'Something went wrong while placing COD order.');
-        setLoading(false);
-      }
+      await initiateCodOtp(cleanPhone);
       return;
     }
 
@@ -579,8 +695,8 @@ function CheckoutContent() {
                 </>
               ) : (
                 <>
-                  <Package size={18} color="#FFAA00" />
-                  <span>CONFIRM ORDER (COD) - ₹{effectiveTotal.toLocaleString('en-IN')} ➔</span>
+                  <MessageCircle size={18} color="#25D366" />
+                  <span>VERIFY ON WHATSAPP & ORDER (COD) ➔</span>
                 </>
               )}
             </button>
@@ -601,6 +717,214 @@ function CheckoutContent() {
             </div>
           </div>
         </form>
+
+        {/* [WHATSAPP_INTEGRATION] 4-Digit COD OTP Verification Modal */}
+        {showOtpModal && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: '16px'
+            }}
+          >
+            <div
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '16px',
+                maxWidth: '380px',
+                width: '100%',
+                padding: '24px 20px',
+                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
+                position: 'relative',
+                textAlign: 'center'
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowOtpModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: '14px',
+                  right: '14px',
+                  background: '#F1F5F9',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#64748B'
+                }}
+              >
+                <X size={16} />
+              </button>
+
+              {/* WhatsApp Icon Header */}
+              <div
+                style={{
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  background: '#DCFCE7',
+                  color: '#16A34A',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '12px'
+                }}
+              >
+                <MessageCircle size={28} />
+              </div>
+
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
+                WhatsApp COD Verification
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.4, marginBottom: '16px' }}>
+                We sent a 4-digit verification code via WhatsApp to <strong style={{ color: '#0F172A' }}>+91 {phone.replace(/\D/g, '')}</strong>.
+              </p>
+
+              {otpError && (
+                <div
+                  style={{
+                    background: '#FEE2E2',
+                    border: '1px solid #FCA5A5',
+                    color: '#991B1B',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    marginBottom: '12px'
+                  }}
+                >
+                  ⚠️ {otpError}
+                </div>
+              )}
+
+              {/* 4-Digit Input */}
+              <div style={{ marginBottom: '16px' }}>
+                <input
+                  type="text"
+                  maxLength={4}
+                  autoFocus
+                  value={otpValue}
+                  onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, ''))}
+                  placeholder="••••"
+                  style={{
+                    width: '180px',
+                    height: '52px',
+                    fontSize: '1.75rem',
+                    fontWeight: 800,
+                    textAlign: 'center',
+                    letterSpacing: '0.45em',
+                    borderRadius: '10px',
+                    border: '2px solid #25D366',
+                    outline: 'none',
+                    background: '#F0FDF4',
+                    color: '#0F172A',
+                    boxShadow: '0 2px 8px rgba(37, 211, 102, 0.15)'
+                  }}
+                />
+              </div>
+
+              {devOtpHint && (
+                <div
+                  style={{
+                    display: 'inline-block',
+                    background: '#FEF3C7',
+                    border: '1px dashed #F59E0B',
+                    color: '#92400E',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    marginBottom: '12px'
+                  }}
+                >
+                  ⚡ Test Code: <strong>{devOtpHint}</strong>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleVerifyOtpAndPlaceCodOrder}
+                disabled={otpLoading || otpValue.length !== 4}
+                style={{
+                  width: '100%',
+                  minHeight: '44px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+                  color: '#FFFFFF',
+                  fontSize: '0.9rem',
+                  fontWeight: 800,
+                  cursor: otpLoading || otpValue.length !== 4 ? 'not-allowed' : 'pointer',
+                  opacity: otpLoading || otpValue.length !== 4 ? 0.6 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  marginBottom: '12px',
+                  boxShadow: '0 4px 12px rgba(37, 211, 102, 0.35)'
+                }}
+              >
+                {otpLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Verifying Code...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>Verify & Confirm Order ➔</span>
+                  </>
+                )}
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                {resendCountdown > 0 ? (
+                  <span style={{ color: '#94A3B8' }}>Resend in {resendCountdown}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => initiateCodOtp(phone.replace(/\D/g, ''))}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#16A34A',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    Resend WhatsApp Code
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowOtpModal(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#64748B',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Edit Mobile Number
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       <Footer />

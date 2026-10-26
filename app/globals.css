@@ -2344,7 +2344,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    max-width: 620px;
+    max-width: 680px;
   }
 
   .hero-human-handwrite-tag {
@@ -2422,23 +2422,27 @@ body {
   .hero-desktop-cta-row {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 10px;
     margin-top: 6px;
+    flex-wrap: nowrap;
+    width: 100%;
   }
 
   .hero-desktop-primary-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     background: linear-gradient(135deg, #8C4320 0%, #68290D 100%);
     color: #FFFFFF !important;
-    font-size: 0.94rem;
+    font-size: 0.88rem;
     font-weight: 700;
-    padding: 13px 28px;
+    padding: 11px 20px;
     border-radius: 9999px;
     text-decoration: none;
     box-shadow: 0 6px 20px rgba(140, 67, 32, 0.35);
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .hero-desktop-primary-btn:hover {
@@ -2450,18 +2454,19 @@ body {
   .hero-desktop-whatsapp-btn {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
+    gap: 6px;
     background: #25D366;
     color: #FFFFFF !important;
-    font-size: 0.90rem;
+    font-size: 0.86rem;
     font-weight: 700;
-    padding: 13px 22px;
+    padding: 11px 18px;
     border-radius: 9999px;
     text-decoration: none;
     box-shadow: 0 4px 16px rgba(37, 211, 102, 0.3);
     border: 1.5px solid rgba(255, 255, 255, 0.35);
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .hero-desktop-whatsapp-btn:hover {
@@ -2475,14 +2480,16 @@ body {
     align-items: center;
     background: #FFFFFF;
     color: #382012 !important;
-    font-size: 0.90rem;
+    font-size: 0.86rem;
     font-weight: 600;
-    padding: 13px 22px;
+    padding: 11px 18px;
     border-radius: 9999px;
     text-decoration: none;
     border: 1.5px solid #D8CABE;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .hero-desktop-secondary-btn:hover {
