@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { HOPEKRAFT_PRODUCTS } from '@/lib/products';
-import { Lock, Zap, Package, ShieldCheck, ArrowRight, Loader2, MessageCircle, CheckCircle2, X } from 'lucide-react';
+import { Lock, Zap, Package, ShieldCheck, Loader2, RotateCw, AlertTriangle } from 'lucide-react';
 
 function CheckoutContent() {
   const router = useRouter();
@@ -32,145 +32,25 @@ function CheckoutContent() {
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // [WHATSAPP_INTEGRATION] 4-Digit COD OTP Verification States
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otpValue, setOtpValue] = useState('');
-  const [verificationToken, setVerificationToken] = useState<string | null>(null);
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpError, setOtpError] = useState<string | null>(null);
-  const [otpSuccessMsg, setOtpSuccessMsg] = useState<string | null>(null);
-  const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
-  const [resendCountdown, setResendCountdown] = useState(0);
+  // Easy Anti-Spam Captcha for Cash on Delivery
+  const [captchaCode, setCaptchaCode] = useState('');
+  const [captchaInput, setCaptchaInput] = useState('');
+  const [showCaptchaWrongModal, setShowCaptchaWrongModal] = useState(false);
+  const captchaInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Countdown timer for OTP resend
-  React.useEffect(() => {
-    if (resendCountdown <= 0) return;
-    const timer = setInterval(() => {
-      setResendCountdown(prev => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [resendCountdown]);
+  const generateCaptcha = () => {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setCaptchaCode(code);
+    setCaptchaInput('');
+  };
+
+  useEffect(() => {
+    generateCaptcha();
+  }, []);
 
   // ₹100 Instant Discount for Online Payment
   const discountAmount = paymentMethod === 'online' ? 100 : 0;
   const effectiveTotal = Math.max(0, directProduct.price - discountAmount);
-
-  // [WHATSAPP_INTEGRATION] Step 1: Send 4-digit OTP via WhatsApp
-  const initiateCodOtp = async (cleanPhone: string) => {
-    setLoading(true);
-    setOtpError(null);
-    setOtpSuccessMsg(null);
-    setOtpValue('');
-
-    try {
-      const res = await fetch('/api/otp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanPhone })
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to send WhatsApp verification OTP.');
-      }
-
-      setVerificationToken(data.verificationToken);
-      setOtpSuccessMsg(data.message || '4-digit verification code sent to your WhatsApp!');
-      if (data.devCode) {
-        setDevOtpHint(data.devCode);
-      }
-      setShowOtpModal(true);
-      setResendCountdown(30);
-    } catch (err: any) {
-      setFormError(err.message || 'Failed to send WhatsApp OTP.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // [WHATSAPP_INTEGRATION] Step 2: Verify 4-digit OTP and place COD order
-  const handleVerifyOtpAndPlaceCodOrder = async () => {
-    if (!otpValue || otpValue.trim().length !== 4) {
-      setOtpError('Please enter the 4-digit code');
-      return;
-    }
-
-    setOtpLoading(true);
-    setOtpError(null);
-
-    const cleanPhone = phone.replace(/\D/g, '');
-
-    try {
-      const verifyRes = await fetch('/api/otp/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: cleanPhone,
-          otp: otpValue.trim(),
-          verificationToken
-        })
-      });
-
-      const verifyData = await verifyRes.json();
-      if (!verifyRes.ok || !verifyData.verified) {
-        throw new Error(verifyData.error || 'Incorrect OTP code. Please check your WhatsApp.');
-      }
-
-      // Verified! Now create order in database
-      await executeCreateCodOrder(verifyData.codToken);
-    } catch (err: any) {
-      setOtpError(err.message || 'Verification failed. Please try again.');
-      setOtpLoading(false);
-    }
-  };
-
-  // Execute creating the COD order once verified
-  const executeCreateCodOrder = async (codToken?: string) => {
-    const cleanPhone = phone.replace(/\D/g, '');
-    const customerDetails = {
-      name: name.trim(),
-      phone: cleanPhone,
-      email: email.trim() || 'hopekraft26@gmail.com',
-      address: address.trim(),
-      city: city.trim(),
-      pincode: pincode.trim(),
-      state: 'India'
-    };
-
-    const orderItems = [
-      {
-        id: directProduct.id,
-        name: directProduct.name,
-        price: directProduct.price,
-        qty: 1,
-        image: directProduct.image
-      }
-    ];
-
-    try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer: customerDetails,
-          items: orderItems,
-          paymentMethod: 'cod',
-          codToken
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.order) {
-        throw new Error(data.error || 'Failed to place COD order');
-      }
-
-      setShowOtpModal(false);
-      router.push(`/order-success?orderId=${data.order.id}`);
-    } catch (err: any) {
-      setOtpError(err.message || 'Something went wrong while placing COD order.');
-      setOtpLoading(false);
-    }
-  };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,6 +78,15 @@ function CheckoutContent() {
       return;
     }
 
+    // Easy Captcha Validation for Cash on Delivery
+    if (paymentMethod === 'cod') {
+      if (!captchaInput.trim() || captchaInput.trim() !== captchaCode) {
+        setShowCaptchaWrongModal(true);
+        generateCaptcha();
+        return;
+      }
+    }
+
     setLoading(true);
 
     const customerDetails = {
@@ -220,15 +109,34 @@ function CheckoutContent() {
       }
     ];
 
-    // --- CASE A: CASH ON DELIVERY WITH WHATSAPP 4-DIGIT OTP ---
+    // --- CASE A: CASH ON DELIVERY (INSTANT WITH CAPTCHA) ---
     if (paymentMethod === 'cod') {
-      await initiateCodOtp(cleanPhone);
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer: customerDetails,
+            items: orderItems,
+            paymentMethod: 'cod'
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.order) {
+          throw new Error(data.error || 'Failed to place COD order');
+        }
+
+        router.push(`/order-success?orderId=${data.order.id}`);
+      } catch (err: any) {
+        setFormError(err.message || 'Something went wrong while placing COD order.');
+        setLoading(false);
+      }
       return;
     }
 
     // --- CASE B: ONLINE PAYMENT VIA RAZORPAY ---
     try {
-      // 1. Create secure order on server (price verified server-side)
       const createRes = await fetch('/api/payment/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -243,7 +151,6 @@ function CheckoutContent() {
         throw new Error(createData.error || 'Could not initialize payment gateway.');
       }
 
-      // Check if Razorpay SDK loaded
       if (typeof window !== 'undefined' && (window as any).Razorpay) {
         const rzpOptions = {
           key: createData.keyId,
@@ -262,7 +169,6 @@ function CheckoutContent() {
             color: '#15803D'
           },
           handler: async function (response: any) {
-            // 2. Razorpay payment succeeded, send cryptographic proof to server
             try {
               const confirmRes = await fetch('/api/orders', {
                 method: 'POST',
@@ -279,12 +185,12 @@ function CheckoutContent() {
 
               const confirmData = await confirmRes.json();
               if (!confirmRes.ok || !confirmData.order) {
-                throw new Error(confirmData.error || 'Payment was received but order verification failed.');
+                throw new Error(confirmData.error || 'Payment verification failed');
               }
 
               router.push(`/order-success?orderId=${confirmData.order.id}`);
-            } catch (confirmErr: any) {
-              setFormError(confirmErr.message || 'Error verifying payment with server.');
+            } catch (err: any) {
+              setFormError(err.message || 'Payment verification failed');
               setLoading(false);
             }
           },
@@ -296,71 +202,85 @@ function CheckoutContent() {
         };
 
         const rzp = new (window as any).Razorpay(rzpOptions);
-        rzp.on('payment.failed', function (failedResp: any) {
-          setFormError(failedResp.error?.description || 'Payment was unsuccessful. Please try again.');
-          setLoading(false);
-        });
         rzp.open();
       } else {
-        // Fallback if Razorpay SDK script failed to load in browser
-        throw new Error('Razorpay SDK is still loading. Please refresh and try again.');
+        throw new Error('Razorpay SDK failed to load. Please refresh and try again.');
       }
-    } catch (onlineErr: any) {
-      setFormError(onlineErr.message || 'Payment initialization error.');
+    } catch (err: any) {
+      setFormError(err.message || 'Payment initialization failed');
       setLoading(false);
     }
   };
 
   return (
-    <div className="app-container storefront-shell checkout-shell">
-      {/* Top Header with Back Button to Cart or Product */}
-      <Header hideSearch backHref="/cart" />
+    <div style={{ minHeight: '100vh', background: '#F8F6F1', display: 'flex', flexDirection: 'column' }}>
+      <Header />
 
-      <main style={{ maxWidth: '480px', margin: '0 auto', padding: '10px 12px 30px' }}>
+      <main style={{ flex: 1, padding: '16px 12px 32px', maxWidth: '480px', margin: '0 auto', width: '100%' }}>
         <form onSubmit={handlePlaceOrder}>
-          {/* PRODUCT MINI STRIP (COMPACT FIT) */}
+          {/* PRODUCT SUMMARY CARD */}
           <div
             style={{
               background: '#FFFFFF',
-              borderRadius: '10px',
-              border: '1px solid #EAE3D6',
-              padding: '8px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
+              borderRadius: '12px',
+              border: '1.5px solid #EAE3D6',
+              padding: '10px 12px',
               marginBottom: '10px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+              boxShadow: '0 2px 8px rgba(45, 30, 20, 0.04)',
+              display: 'flex',
+              gap: '10px',
+              alignItems: 'center'
             }}
           >
-            <img
-              src={directProduct.image}
-              alt={directProduct.name}
+            <div
               style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '6px',
-                objectFit: 'cover',
-                border: '1px solid #EAE3D6'
+                width: '68px',
+                height: '68px',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                background: '#F5EBE1',
+                flexShrink: 0
               }}
-            />
+            >
+              <img
+                src={directProduct.image}
+                alt={directProduct.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div
+              <span
                 style={{
-                  fontSize: '0.8rem',
+                  fontSize: '0.62rem',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  color: '#8C4320',
+                  letterSpacing: '0.4px',
+                  display: 'block'
+                }}
+              >
+                {directProduct.eyebrow || 'HOPEKRAFT COLLECTION'}
+              </span>
+              <h2
+                style={{
+                  fontSize: '0.86rem',
                   fontWeight: 800,
                   color: '#2B1B17',
+                  margin: '1px 0',
+                  whiteSpace: 'nowrap',
                   overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
+                  textOverflow: 'ellipsis'
                 }}
               >
                 {directProduct.name}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
-                <span style={{ fontSize: '0.9rem', fontWeight: 900, color: '#8C4320' }}>
+              </h2>
+
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span style={{ fontSize: '1.05rem', fontWeight: 900, color: '#8C4320' }}>
                   ₹{directProduct.price.toLocaleString('en-IN')}
                 </span>
-                <span style={{ fontSize: '0.66rem', color: '#887B70', textDecoration: 'line-through' }}>
+                <span style={{ fontSize: '0.74rem', textDecoration: 'line-through', color: '#9CA3AF' }}>
                   ₹{directProduct.oldPrice.toLocaleString('en-IN')}
                 </span>
                 <span
@@ -379,7 +299,7 @@ function CheckoutContent() {
             </div>
           </div>
 
-          {/* SINGLE-CARD DELIVERY & PAYMENT FORM (PERFECT MOBILE FIT) */}
+          {/* SINGLE-CARD DELIVERY & PAYMENT FORM */}
           <div
             style={{
               background: '#FFFFFF',
@@ -470,7 +390,7 @@ function CheckoutContent() {
                   maxLength={10}
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
-                  placeholder="10-digit number"
+                  placeholder="9876543210"
                   style={{
                     width: '100%',
                     padding: '7px 9px',
@@ -485,10 +405,10 @@ function CheckoutContent() {
               </div>
             </div>
 
-            {/* Email Address (for tracking & invoice updates) */}
+            {/* Email Address */}
             <div style={{ marginBottom: '8px' }}>
               <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: '#475569', marginBottom: '2px' }}>
-                Email Address (Order Tracking &amp; Invoice)
+                Email Address (Optional)
               </label>
               <input
                 type="email"
@@ -582,7 +502,7 @@ function CheckoutContent() {
               </div>
             </div>
 
-            {/* PAYMENT METHOD SELECTOR (COMPACT 2-PILL CHOICE) */}
+            {/* PAYMENT METHOD SELECTOR */}
             <div style={{ borderTop: '1px solid #F0ECE4', paddingTop: '10px', marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, color: '#2B1B17', marginBottom: '6px' }}>
                 Payment Method:
@@ -637,6 +557,84 @@ function CheckoutContent() {
                 </div>
               </div>
             </div>
+
+            {/* EASY CAPTCHA CODE FOR COD */}
+            {paymentMethod === 'cod' && (
+              <div
+                style={{
+                  background: '#FFF8F2',
+                  border: '1.5px solid #F5DCC8',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  marginBottom: '12px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#8C4320' }}>
+                    🛡️ Enter 4-Digit Security Code:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={generateCaptcha}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '0.68rem',
+                      color: '#8C4320',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title="Change code"
+                  >
+                    <RotateCw size={11} /> Refresh Code
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div
+                    style={{
+                      background: 'linear-gradient(135deg, #2D1A10 0%, #150B06 100%)',
+                      color: '#FFDEB8',
+                      letterSpacing: '0.35em',
+                      fontSize: '1.2rem',
+                      fontWeight: 900,
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      userSelect: 'none',
+                      border: '1px solid #8C4320'
+                    }}
+                  >
+                    {captchaCode}
+                  </div>
+
+                  <input
+                    ref={captchaInputRef}
+                    type="text"
+                    maxLength={4}
+                    value={captchaInput}
+                    onChange={e => setCaptchaInput(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter digits"
+                    style={{
+                      flex: 1,
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #D5CEBE',
+                      fontSize: '0.9rem',
+                      fontWeight: 800,
+                      textAlign: 'center',
+                      letterSpacing: '0.25em',
+                      outline: 'none',
+                      background: '#FFFFFF',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* ORDER TOTAL & SUBMIT BUTTON */}
             <div style={{ background: '#F8F6F1', borderRadius: '8px', padding: '8px 10px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -695,8 +693,8 @@ function CheckoutContent() {
                 </>
               ) : (
                 <>
-                  <MessageCircle size={18} color="#25D366" />
-                  <span>VERIFY ON WHATSAPP & ORDER (COD) ➔</span>
+                  <Package size={18} color="#FFAA00" />
+                  <span>CONFIRM ORDER (COD) - ₹{effectiveTotal.toLocaleString('en-IN')} ➔</span>
                 </>
               )}
             </button>
@@ -718,8 +716,8 @@ function CheckoutContent() {
           </div>
         </form>
 
-        {/* [WHATSAPP_INTEGRATION] 4-Digit COD OTP Verification Modal */}
-        {showOtpModal && (
+        {/* WRONG CAPTCHA POPUP MODAL */}
+        {showCaptchaWrongModal && (
           <div
             style={{
               position: 'fixed',
@@ -737,191 +735,58 @@ function CheckoutContent() {
               style={{
                 background: '#FFFFFF',
                 borderRadius: '16px',
-                maxWidth: '380px',
+                maxWidth: '350px',
                 width: '100%',
                 padding: '24px 20px',
-                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
+                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
                 position: 'relative',
                 textAlign: 'center'
               }}
             >
-              <button
-                type="button"
-                onClick={() => setShowOtpModal(false)}
-                style={{
-                  position: 'absolute',
-                  top: '14px',
-                  right: '14px',
-                  background: '#F1F5F9',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '28px',
-                  height: '28px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: '#64748B'
-                }}
-              >
-                <X size={16} />
-              </button>
-
-              {/* WhatsApp Icon Header */}
               <div
                 style={{
                   width: '54px',
                   height: '54px',
                   borderRadius: '50%',
-                  background: '#DCFCE7',
-                  color: '#16A34A',
+                  background: '#FEE2E2',
+                  color: '#DC2626',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: '12px'
                 }}
               >
-                <MessageCircle size={28} />
+                <AlertTriangle size={28} />
               </div>
 
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
-                WhatsApp COD Verification
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#991B1B', margin: '0 0 6px' }}>
+                Captcha Wrong!
               </h3>
-              <p style={{ fontSize: '0.8rem', color: '#64748B', lineHeight: 1.4, marginBottom: '16px' }}>
-                We sent a 4-digit verification code via WhatsApp to <strong style={{ color: '#0F172A' }}>+91 {phone.replace(/\D/g, '')}</strong>.
+              <p style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.45, margin: '0 0 18px' }}>
+                Aapne galat security code enter kiya hai. Kripya screen par dikhaya gaya naya 4-digit code dekh kar sahi se enter karein.
               </p>
-
-              {otpError && (
-                <div
-                  style={{
-                    background: '#FEE2E2',
-                    border: '1px solid #FCA5A5',
-                    color: '#991B1B',
-                    padding: '6px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    marginBottom: '12px'
-                  }}
-                >
-                  ⚠️ {otpError}
-                </div>
-              )}
-
-              {/* 4-Digit Input */}
-              <div style={{ marginBottom: '16px' }}>
-                <input
-                  type="text"
-                  maxLength={4}
-                  autoFocus
-                  value={otpValue}
-                  onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, ''))}
-                  placeholder="••••"
-                  style={{
-                    width: '180px',
-                    height: '52px',
-                    fontSize: '1.75rem',
-                    fontWeight: 800,
-                    textAlign: 'center',
-                    letterSpacing: '0.45em',
-                    borderRadius: '10px',
-                    border: '2px solid #25D366',
-                    outline: 'none',
-                    background: '#F0FDF4',
-                    color: '#0F172A',
-                    boxShadow: '0 2px 8px rgba(37, 211, 102, 0.15)'
-                  }}
-                />
-              </div>
-
-              {devOtpHint && (
-                <div
-                  style={{
-                    display: 'inline-block',
-                    background: '#FEF3C7',
-                    border: '1px dashed #F59E0B',
-                    color: '#92400E',
-                    padding: '3px 8px',
-                    borderRadius: '6px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    marginBottom: '12px'
-                  }}
-                >
-                  ⚡ Test Code: <strong>{devOtpHint}</strong>
-                </div>
-              )}
 
               <button
                 type="button"
-                onClick={handleVerifyOtpAndPlaceCodOrder}
-                disabled={otpLoading || otpValue.length !== 4}
+                onClick={() => {
+                  setShowCaptchaWrongModal(false);
+                  setTimeout(() => captchaInputRef.current?.focus(), 150);
+                }}
                 style={{
                   width: '100%',
                   minHeight: '44px',
-                  borderRadius: '8px',
+                  borderRadius: '10px',
                   border: 'none',
-                  background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+                  background: 'linear-gradient(135deg, #8C4320 0%, #26140B 100%)',
                   color: '#FFFFFF',
-                  fontSize: '0.9rem',
+                  fontSize: '0.92rem',
                   fontWeight: 800,
-                  cursor: otpLoading || otpValue.length !== 4 ? 'not-allowed' : 'pointer',
-                  opacity: otpLoading || otpValue.length !== 4 ? 0.6 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  marginBottom: '12px',
-                  boxShadow: '0 4px 12px rgba(37, 211, 102, 0.35)'
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(140, 67, 32, 0.35)'
                 }}
               >
-                {otpLoading ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span>Verifying Code...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 size={16} />
-                    <span>Verify & Confirm Order ➔</span>
-                  </>
-                )}
+                Theek Hai / Dobara Enter Karein ➔
               </button>
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem' }}>
-                {resendCountdown > 0 ? (
-                  <span style={{ color: '#94A3B8' }}>Resend in {resendCountdown}s</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => initiateCodOtp(phone.replace(/\D/g, ''))}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#16A34A',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      textDecoration: 'underline'
-                    }}
-                  >
-                    Resend WhatsApp Code
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setShowOtpModal(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#64748B',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Edit Mobile Number
-                </button>
-              </div>
             </div>
           </div>
         )}

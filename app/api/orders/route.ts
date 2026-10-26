@@ -3,8 +3,6 @@ import { getAllOrders, createOrder, updateOrder } from '@/lib/db';
 import { verifyAdminToken, ADMIN_COOKIE_NAME } from '@/lib/auth';
 import { verifyRazorpaySignature } from '@/lib/razorpay';
 import { HOPEKRAFT_PRODUCTS } from '@/lib/products';
-// [WHATSAPP_INTEGRATION] - Easily removable
-import { sendOrderConfirmationWhatsApp } from '@/lib/whatsapp';
 
 export async function GET(req: NextRequest) {
   // Admin-only protection
@@ -123,11 +121,6 @@ export async function POST(req: NextRequest) {
       razorpaySignature: razorpaySignature || undefined,
       orderStatus: initialOrderStatus,
       shippingStatus: 'unfulfilled'
-    });
-
-    // [WHATSAPP_INTEGRATION] Automated WhatsApp order confirmation notification
-    sendOrderConfirmationWhatsApp(newOrder).catch((err) => {
-      console.warn('[WhatsApp Notification Notice]:', err?.message || err);
     });
 
     // NOTE: Order is saved safely as 'unfulfilled'.
