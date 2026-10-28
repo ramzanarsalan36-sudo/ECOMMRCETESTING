@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Order, OrderStatus } from '@/lib/db';
+import { HOPEKRAFT_PRODUCTS } from '@/lib/products';
 import {
   Package,
   TrendingUp,
@@ -24,9 +25,14 @@ import {
   Trash2,
   AlertTriangle,
   CheckCircle2,
-  ArrowUpDown,
   Calendar,
-  MoreHorizontal
+  Flame,
+  Zap,
+  ArrowRightLeft,
+  FileSpreadsheet,
+  RotateCcw,
+  Check,
+  PlusCircle
 } from 'lucide-react';
 import { printPackagingSlip } from '@/lib/packagingSlip';
 
@@ -38,30 +44,42 @@ function AdminOrdersPageContent() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('ALL');
 
-  // Date Filtering & Sorting State (Today, Yesterday, Last 7 Days, All)
-  const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY' | 'YESTERDAY' | 'WEEK'>('ALL');
+  // Date Filtering State
+  const [datePreset, setDatePreset] = useState<string>('ALL');
+  const [specificDate, setSpecificDate] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
   const [sortBy, setSortBy] = useState<'DATE_DESC' | 'DATE_ASC'>('DATE_DESC');
 
-  // In-Row Shiprocket Direct Assign Loading Tracker
+  // In-Row Shiprocket Action Loader
   const [assigningOrderId, setAssigningOrderId] = useState<string | null>(null);
 
-  // More Actions Dropdown State
-  const [activeDropdownOrderId, setActiveDropdownOrderId] = useState<string | null>(null);
-
-  // Modal Drawer State
+  // Modal 1: View Order Details Modal
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
-  const [newStatus, setNewStatus] = useState<OrderStatus>('Pending');
-  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
-  // Order Deletion Modal State
+  // Modal 2: Change Product & Custom Pricing Modal
+  const [orderToChange, setOrderToChange] = useState<Order | null>(null);
+  const [changeProductId, setChangeProductId] = useState<string>('easel');
+  const [changeQty, setChangeQty] = useState<number>(1);
+  const [changeUnitPrice, setChangeUnitPrice] = useState<number>(999);
+  const [changeDeliveryFee, setChangeDeliveryFee] = useState<number>(0);
+  const [changeDiscount, setChangeDiscount] = useState<number>(0);
+  const [changeNotes, setChangeNotes] = useState<string>('');
+  const [changeLoading, setChangeLoading] = useState<boolean>(false);
+
+  // Modal 3: Order Deletion Modal
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleteType, setDeleteType] = useState<string>('Customer Cancellation');
   const [deleteReasonNotes, setDeleteReasonNotes] = useState<string>('');
   const [deleteConfirmInput, setDeleteConfirmInput] = useState<string>('');
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
+  // User Feedback Toast
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+
+  // Fetch orders from API
   const loadOrders = async () => {
     setLoading(true);
     try {
@@ -72,9 +90,7 @@ function AdminOrdersPageContent() {
       }
       if (res.ok) {
         const data = await res.json();
-        if (data.orders) {
-          setOrders(data.orders);
-        }
+        setOrders(data.orders || []);
       }
     } catch (err) {
       console.error('Failed to load orders', err);
@@ -85,34 +101,26 @@ function AdminOrdersPageContent() {
 
   useEffect(() => {
     loadOrders();
-
-    const closeDropdown = () => setActiveDropdownOrderId(null);
-    window.addEventListener('click', closeDropdown);
-    return () => window.removeEventListener('click', closeDropdown);
   }, []);
 
-  const handleQuickStatusChange = async (orderId: string, status: OrderStatus) => {
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderStatus: status })
-      });
-      const data = await res.json();
-      if (res.ok && data.order) {
-        setOrders(prev => prev.map(o => (o.id === data.order.id ? data.order : o)));
-        if (selectedOrder && selectedOrder.id === data.order.id) {
-          setSelectedOrder(data.order);
-        }
-        setFeedbackMsg(`Order #${data.order.orderNumber} status changed to ${status}`);
-        setTimeout(() => setFeedbackMsg(null), 3000);
-      }
-    } catch (err: any) {
-      alert(`Failed to change status: ${err.message}`);
-    }
+  const openOrderModal = (order: Order) => {
+    setSelectedOrder(order);
   };
 
-  // 1-Click In-Row Assign to Shiprocket
+  // WhatsApp helper
+  const handleWhatsAppCustomer = (order: Order) => {
+    const cleanPhone = order.customer.phone.replace(/[^0-9]/g, '');
+    const phoneWithCountry = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+    const itemsText = order.items.map(i => `${i.name} (Qty: ${i.qty})`).join(', ');
+    const message = encodeURIComponent(
+      `Hello ${order.customer.name},\n\nYour HOPEKRAFT order #${order.orderNumber} for:\n*${itemsText}*\nTotal: Rs. ${order.total} (${order.paymentMethod.toUpperCase()})\n\nStatus: ${order.orderStatus}\nDelivery Address: ${order.customer.address}, ${order.customer.city} - ${order.customer.pincode}\n${
+        order.awbCode ? `Tracking AWB: ${order.awbCode} (${order.courierName})` : 'We are preparing your shipment.'
+      }\n\nThank you for choosing HOPEKRAFT!`
+    );
+    window.open(`https://wa.me/${phoneWithCountry}?text=${message}`, '_blank');
+  };
+
+  // 1-Click Shiprocket Assign
   const handleAssignToShiprocket = async (orderId: string) => {
     setAssigningOrderId(orderId);
     try {
@@ -139,117 +147,135 @@ function AdminOrdersPageContent() {
     }
   };
 
-  // Dynamic Date Counts
-  const dateCounts = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const yesterdayStart = todayStart - 86400000;
-    const sevenDaysStart = now.getTime() - 7 * 86400000;
-
-    let today = 0;
-    let yesterday = 0;
-    let week = 0;
-
-    orders.forEach(o => {
-      const t = new Date(o.createdAt).getTime();
-      if (t >= todayStart) today++;
-      if (t >= yesterdayStart && t < todayStart) yesterday++;
-      if (t >= sevenDaysStart) week++;
-    });
-
-    return {
-      ALL: orders.length,
-      TODAY: today,
-      YESTERDAY: yesterday,
-      WEEK: week
-    };
-  }, [orders]);
-
-  // Tab counts
-  const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = {
-      ALL: orders.length,
-      PENDING: 0,
-      CONFIRMED: 0,
-      SHIPPED: 0,
-      DELIVERED: 0,
-      CANCELLED: 0
-    };
-    orders.forEach(o => {
-      const st = o.orderStatus.toUpperCase();
-      if (counts[st] !== undefined) {
-        counts[st]++;
+  // Mark Delivered (Settlement)
+  const handleMarkDelivered = async (order: Order) => {
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderStatus: 'Delivered',
+          shippingStatus: 'delivered',
+          paymentStatus: 'paid'
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.order) {
+        setOrders(prev => prev.map(o => (o.id === data.order.id ? data.order : o)));
+        if (selectedOrder && selectedOrder.id === data.order.id) {
+          setSelectedOrder(data.order);
+        }
+        setFeedbackMsg(`Order ${order.orderNumber} marked as Delivered & Settled!`);
+        setTimeout(() => setFeedbackMsg(null), 3500);
       }
-    });
-    return counts;
-  }, [orders]);
-
-  // Filtered & Sorted orders
-  const filteredOrders = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const yesterdayStart = todayStart - 86400000;
-    const sevenDaysStart = now.getTime() - 7 * 86400000;
-
-    const list = orders.filter(order => {
-      // If Shiprocket tab is selected from sidebar, show shipped / pending shiprocket orders
-      if (currentView === 'shiprocket') {
-        if (order.orderStatus === 'Cancelled') return false;
-      }
-
-      // Status filter
-      if (selectedStatus !== 'ALL' && order.orderStatus.toUpperCase() !== selectedStatus) {
-        return false;
-      }
-
-      // Date filter (Today, Yesterday, Last 7 Days)
-      const t = new Date(order.createdAt).getTime();
-      if (dateFilter === 'TODAY' && t < todayStart) return false;
-      if (dateFilter === 'YESTERDAY' && (t < yesterdayStart || t >= todayStart)) return false;
-      if (dateFilter === 'WEEK' && t < sevenDaysStart) return false;
-
-      // Search filter
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        (order.id && order.id.toLowerCase().includes(q)) ||
-        (order.orderNumber && order.orderNumber.toLowerCase().includes(q)) ||
-        (order.customer?.name && order.customer.name.toLowerCase().includes(q)) ||
-        (order.customer?.phone && order.customer.phone.includes(q)) ||
-        (order.customer?.city && order.customer.city.toLowerCase().includes(q)) ||
-        (order.awbCode && order.awbCode.toLowerCase().includes(q)) ||
-        (order.courierName && order.courierName.toLowerCase().includes(q))
-      );
-    });
-
-    // Sort order
-    return [...list].sort((a, b) => {
-      if (sortBy === 'DATE_DESC') {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    });
-  }, [orders, selectedStatus, dateFilter, sortBy, searchQuery, currentView]);
-
-  // Key Metrics
-  const metrics = useMemo(() => {
-    const totalRev = orders
-      .filter(o => o.orderStatus !== 'Cancelled')
-      .reduce((sum, o) => sum + o.total, 0);
-
-    const totalOrders = orders.length;
-    const pendingOrders = orders.filter(o => o.orderStatus === 'Pending').length;
-    const dispatchedOrders = orders.filter(o => o.orderStatus === 'Shipped' || o.orderStatus === 'Delivered').length;
-
-    return { totalRev, totalOrders, pendingOrders, dispatchedOrders };
-  }, [orders]);
-
-  const openOrderModal = (order: Order) => {
-    setSelectedOrder(order);
-    setNewStatus(order.orderStatus);
-    setFeedbackMsg(null);
+    } catch (err: any) {
+      alert(`Settlement failed: ${err.message}`);
+    }
   };
 
+  // Cancel Order
+  const handleCancelOrder = async (order: Order) => {
+    if (!confirm(`Are you sure you want to cancel order ${order.orderNumber}?`)) return;
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderStatus: 'Cancelled',
+          shippingStatus: 'cancelled'
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.order) {
+        setOrders(prev => prev.map(o => (o.id === data.order.id ? data.order : o)));
+        if (selectedOrder && selectedOrder.id === data.order.id) {
+          setSelectedOrder(data.order);
+        }
+        setFeedbackMsg(`Order ${order.orderNumber} marked as Cancelled.`);
+        setTimeout(() => setFeedbackMsg(null), 3500);
+      }
+    } catch (err: any) {
+      alert(`Cancellation failed: ${err.message}`);
+    }
+  };
+
+  // Open Change Product Modal
+  const openChangeModal = (order: Order) => {
+    setOrderToChange(order);
+    const firstItem = order.items && order.items[0];
+    const initialProdId = (firstItem && firstItem.id) || 'easel';
+    setChangeProductId(initialProdId);
+    setChangeQty(firstItem ? firstItem.qty : 1);
+    setChangeUnitPrice(firstItem ? firstItem.price : 999);
+    setChangeDeliveryFee(order.shipping || 0);
+    setChangeDiscount(order.discount || 0);
+    setChangeNotes(order.notes || '');
+  };
+
+  const handleProductSelectionChange = (prodId: string) => {
+    setChangeProductId(prodId);
+    const prod = HOPEKRAFT_PRODUCTS[prodId];
+    if (prod) {
+      setChangeUnitPrice(prod.price);
+    }
+  };
+
+  const changeSubtotal = changeQty * changeUnitPrice;
+  const changeFinalTotal = Math.max(0, changeSubtotal + changeDeliveryFee - changeDiscount);
+
+  const handleSaveChangedOrder = async () => {
+    if (!orderToChange) return;
+    setChangeLoading(true);
+    try {
+      const selectedProd = HOPEKRAFT_PRODUCTS[changeProductId] || {
+        id: changeProductId,
+        name: 'Custom Product',
+        image: '/assets/images/product_easel_hd.jpg'
+      };
+
+      const updatedItem = {
+        id: selectedProd.id,
+        name: selectedProd.name,
+        price: changeUnitPrice,
+        qty: changeQty,
+        image: selectedProd.image
+      };
+
+      const patchPayload = {
+        items: [updatedItem],
+        subtotal: changeSubtotal,
+        shipping: changeDeliveryFee,
+        discount: changeDiscount,
+        total: changeFinalTotal,
+        notes: changeNotes
+      };
+
+      const res = await fetch(`/api/orders/${orderToChange.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patchPayload)
+      });
+
+      const data = await res.json();
+      if (res.ok && data.order) {
+        setOrders(prev => prev.map(o => (o.id === data.order.id ? data.order : o)));
+        if (selectedOrder && selectedOrder.id === data.order.id) {
+          setSelectedOrder(data.order);
+        }
+        setFeedbackMsg(`Order ${data.order.orderNumber} successfully updated with new product & pricing!`);
+        setTimeout(() => setFeedbackMsg(null), 4000);
+        setOrderToChange(null);
+      } else {
+        alert(`Update failed: ${data.error || 'Server error'}`);
+      }
+    } catch (err: any) {
+      alert(`Error updating order: ${err.message}`);
+    } finally {
+      setChangeLoading(false);
+    }
+  };
+
+  // Open Delete Modal
   const openDeleteModal = (order: Order) => {
     setOrderToDelete(order);
     setDeleteType('Customer Cancellation');
@@ -275,7 +301,7 @@ function AdminOrdersPageContent() {
         if (selectedOrder && selectedOrder.id === orderToDelete.id) {
           setSelectedOrder(null);
         }
-        setFeedbackMsg(`Order ${orderToDelete.orderNumber} deleted successfully (${deleteType})`);
+        setFeedbackMsg(`Order ${orderToDelete.orderNumber} permanently deleted.`);
         setTimeout(() => setFeedbackMsg(null), 4000);
         setOrderToDelete(null);
       } else {
@@ -288,100 +314,268 @@ function AdminOrdersPageContent() {
     }
   };
 
-  const handleUpdateStatus = async () => {
-    if (!selectedOrder) return;
-    setStatusUpdateLoading(true);
+  // Fast Test Order Creation
+  const handleCreateTestOrder = async () => {
     try {
-      const res = await fetch(`/api/orders/${selectedOrder.id}`, {
-        method: 'PATCH',
+      const randomPhone = `98${Math.floor(10000000 + Math.random() * 90000000)}`;
+      const res = await fetch('/api/orders', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderStatus: newStatus })
+        body: JSON.stringify({
+          customer: {
+            name: 'Arsalan Ramzan',
+            phone: randomPhone,
+            email: 'arsalan@example.com',
+            address: 'Main Market Road, Near City Center',
+            city: 'Malegaon',
+            state: 'Maharashtra',
+            pincode: '423203'
+          },
+          items: [{ id: 'easel', qty: 1 }],
+          paymentMethod: 'cod'
+        })
       });
       const data = await res.json();
       if (res.ok && data.order) {
-        setSelectedOrder(data.order);
-        setOrders(prev => prev.map(o => (o.id === data.order.id ? data.order : o)));
-        setFeedbackMsg(`Order status updated to ${newStatus}`);
+        setOrders(prev => [data.order, ...prev]);
+        setFeedbackMsg(`New Test Order #${data.order.orderNumber} created in Firebase!`);
+        setTimeout(() => setFeedbackMsg(null), 4000);
       }
     } catch (err: any) {
-      setFeedbackMsg(`Error updating status: ${err.message}`);
-    } finally {
-      setStatusUpdateLoading(false);
+      alert(`Failed to create test order: ${err.message}`);
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setFeedbackMsg('Copied to clipboard! 📋');
-    setTimeout(() => setFeedbackMsg(null), 2500);
+  // Clear Database
+  const handleClearAllOrders = async () => {
+    if (!confirm('CAUTION: Are you sure you want to permanently clear ALL orders from Firebase Realtime Database?')) return;
+    try {
+      const res = await fetch('/api/orders', { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOrders([]);
+        setSelectedOrder(null);
+        setOrderToChange(null);
+        setFeedbackMsg('All orders cleared! Database is completely empty.');
+        setTimeout(() => setFeedbackMsg(null), 4000);
+      } else {
+        alert('Could not clear orders: ' + (data.error || 'Server error'));
+      }
+    } catch (err: any) {
+      alert('Error clearing orders: ' + err.message);
+    }
   };
 
-  const exportOrdersToCSV = () => {
+  // Export CSV
+  const handleExportCSV = () => {
+    if (orders.length === 0) {
+      alert('No orders to export!');
+      return;
+    }
     const headers = [
       'Order Number',
       'Date',
       'Customer Name',
       'Phone',
+      'Address',
       'City',
       'Pincode',
       'Items',
       'Total Amount',
       'Payment Method',
-      'Payment Status',
       'Order Status',
       'Courier',
       'AWB Code'
     ];
     const rows = filteredOrders.map(o => [
-      o.orderNumber,
-      new Date(o.createdAt).toISOString(),
+      `"${o.orderNumber}"`,
+      `"${new Date(o.createdAt).toLocaleString('en-IN')}"`,
       `"${o.customer.name.replace(/"/g, '""')}"`,
       `"${o.customer.phone}"`,
+      `"${o.customer.address.replace(/"/g, '""')}"`,
       `"${o.customer.city}"`,
       `"${o.customer.pincode}"`,
       `"${o.items.map(i => `${i.name} (x${i.qty})`).join('; ')}"`,
       o.total,
-      o.paymentMethod,
-      o.paymentStatus,
-      o.orderStatus,
-      o.courierName || '',
-      o.awbCode || ''
+      `"${o.paymentMethod}"`,
+      `"${o.orderStatus}"`,
+      `"${o.courierName || ''}"`,
+      `"${o.awbCode || ''}"`
     ]);
-    const csvContent =
-      'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvString = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `hopekraft_orders_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
+    link.href = url;
+    link.download = `HOPEKRAFT_Orders_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
-    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  const getWhatsAppUrl = (phone: string, customerName: string, orderNumber: string, status: string) => {
-    const cleanPhone = phone.replace(/\D/g, '');
-    const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-    const text = encodeURIComponent(
-      `Hello ${customerName}! Your HopeKraft order ${orderNumber} is currently ${status}. Let us know if you need any assistance!`
-    );
-    return `https://wa.me/${formattedPhone}?text=${text}`;
-  };
-
-  const getInitials = (name: string) => {
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
+  // Export Excel
+  const handleExportExcel = () => {
+    if (orders.length === 0) {
+      alert('No orders to export!');
+      return;
     }
-    return name.slice(0, 2).toUpperCase();
+    const headers = ['Order Number', 'Date', 'Customer', 'Phone', 'City', 'Total', 'Payment', 'Status', 'Courier', 'AWB'];
+    const rows = filteredOrders.map(o => `
+      <tr>
+        <td>${o.orderNumber}</td>
+        <td>${new Date(o.createdAt).toLocaleString('en-IN')}</td>
+        <td>${o.customer.name}</td>
+        <td>${o.customer.phone}</td>
+        <td>${o.customer.city}</td>
+        <td>${o.total}</td>
+        <td>${o.paymentMethod.toUpperCase()}</td>
+        <td>${o.orderStatus}</td>
+        <td>${o.courierName || 'Unfulfilled'}</td>
+        <td>${o.awbCode || ''}</td>
+      </tr>
+    `).join('');
+
+    const excelHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head><meta charset="utf-8"/></head>
+        <body>
+          <table border="1">
+            <thead><tr style="background:#15803D;color:#FFF;">${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </body>
+      </html>
+    `;
+    const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `HOPEKRAFT_Orders_Report_${new Date().toISOString().slice(0, 10)}.xls`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Filtered orders
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const yesterdayStart = todayStart - 86400000;
+    const dayBeforeStart = todayStart - 86400000 * 2;
+    const sevenDaysStart = now.getTime() - 7 * 86400000;
+    const thirtyDaysStart = now.getTime() - 30 * 86400000;
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+    return orders.filter(order => {
+      const orderTime = new Date(order.createdAt).getTime();
+
+      if (selectedStatus !== 'ALL' && order.orderStatus.toUpperCase() !== selectedStatus.toUpperCase()) {
+        return false;
+      }
+
+      if (selectedPaymentMethod !== 'ALL') {
+        const pm = order.paymentMethod.toLowerCase();
+        if (selectedPaymentMethod === 'COD' && pm !== 'cod') return false;
+        if (selectedPaymentMethod === 'ONLINE' && pm !== 'razorpay' && pm !== 'online' && pm !== 'card') return false;
+        if (selectedPaymentMethod === 'UPI' && pm !== 'upi') return false;
+      }
+
+      if (specificDate) {
+        const orderDateStr = new Date(order.createdAt).toISOString().slice(0, 10);
+        if (orderDateStr !== specificDate) return false;
+      } else if (dateFrom || dateTo) {
+        const fromTime = dateFrom ? new Date(dateFrom).getTime() : 0;
+        const toTime = dateTo ? new Date(dateTo + 'T23:59:59.999Z').getTime() : Infinity;
+        if (orderTime < fromTime || orderTime > toTime) return false;
+      } else {
+        if (datePreset === 'TODAY' && orderTime < todayStart) return false;
+        if (datePreset === 'YESTERDAY' && (orderTime < yesterdayStart || orderTime >= todayStart)) return false;
+        if (datePreset === 'DAY_BEFORE' && (orderTime < dayBeforeStart || orderTime >= yesterdayStart)) return false;
+        if (datePreset === 'LAST_7_DAYS' && orderTime < sevenDaysStart) return false;
+        if (datePreset === 'THIS_MONTH' && orderTime < thisMonthStart) return false;
+        if (datePreset === 'LAST_30_DAYS' && orderTime < thirtyDaysStart) return false;
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesId = (order.id && order.id.toLowerCase().includes(q)) || (order.orderNumber && order.orderNumber.toLowerCase().includes(q));
+        const matchesName = order.customer?.name && order.customer.name.toLowerCase().includes(q);
+        const matchesPhone = order.customer?.phone && order.customer.phone.includes(q);
+        const matchesCity = order.customer?.city && order.customer.city.toLowerCase().includes(q);
+        const matchesAwb = order.awbCode && order.awbCode.toLowerCase().includes(q);
+        if (!matchesId && !matchesName && !matchesPhone && !matchesCity && !matchesAwb) {
+          return false;
+        }
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (sortBy === 'DATE_DESC') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+  }, [orders, selectedStatus, selectedPaymentMethod, datePreset, specificDate, dateFrom, dateTo, searchQuery, sortBy]);
+
+  // Metrics
+  const metrics = useMemo(() => {
+    const list = filteredOrders;
+    const totalBooked = list.length;
+    const totalUnits = list.reduce((sum, o) => sum + (o.items?.reduce((s, i) => s + (i.qty || 1), 0) || 1), 0);
+    const grossBooked = list.filter(o => o.orderStatus !== 'Cancelled').reduce((sum, o) => sum + (o.total || 0), 0);
+    const aov = totalBooked > 0 ? Math.round(grossBooked / totalBooked) : 0;
+
+    const deliveredOrders = list.filter(o => o.orderStatus === 'Delivered');
+    const deliveredTotal = deliveredOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+    const onlineOrders = list.filter(o => o.paymentMethod === 'razorpay' || (o.paymentMethod as string) === 'online' || o.paymentMethod === 'card' || o.paymentMethod === 'upi');
+    const onlineTotal = onlineOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+    const codOrders = list.filter(o => o.paymentMethod === 'cod');
+    const codTotal = codOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+    const inTransitCount = list.filter(o => o.shippingStatus === 'in_transit' || o.shippingStatus === 'picked_up' || o.shippingStatus === 'manifested').length;
+    const cancelledCount = list.filter(o => o.orderStatus === 'Cancelled').length;
+
+    return {
+      totalBooked,
+      totalUnits,
+      grossBooked,
+      aov,
+      deliveredTotal,
+      deliveredCount: deliveredOrders.length,
+      onlineTotal,
+      onlineCount: onlineOrders.length,
+      codTotal,
+      codCount: codOrders.length,
+      inTransitCount,
+      cancelledCount
+    };
+  }, [filteredOrders]);
+
+  const handleResetFilters = () => {
+    setDatePreset('ALL');
+    setSpecificDate('');
+    setDateFrom('');
+    setDateTo('');
+    setSelectedStatus('ALL');
+    setSelectedPaymentMethod('ALL');
+    setSearchQuery('');
   };
 
   return (
     <>
-      {/* PAGE HEADER */}
+      {/* Toast Feedback */}
+      {feedbackMsg && (
+        <div style={{ position: 'fixed', top: '16px', right: '16px', zIndex: 10000, background: '#059669', color: '#FFF', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <CheckCircle size={16} />
+          <span>{feedbackMsg}</span>
+        </div>
+      )}
+
+      {/* 1. PAGE HEADER */}
       <div className="admin-page-header">
         <div className="admin-header-title-wrap">
           <h1 className="admin-page-title">
-            {currentView === 'shiprocket' ? 'Shiprocket Orders' : 'Orders & Dispatch Engine'}
+            Orders & Realtime Analytics
           </h1>
           <span className="admin-live-badge">
             <span className="pulse-dot"></span>
@@ -389,1116 +583,904 @@ function AdminOrdersPageContent() {
           </span>
         </div>
 
+        {/* Toolbar Action Buttons */}
         <div className="admin-header-actions">
-          <button
-            type="button"
-            onClick={exportOrdersToCSV}
-            className="btn-header-action"
-            title="Download CSV for Excel/Tally"
-          >
+          <button type="button" onClick={handleExportExcel} className="btn-export-excel" title="Download Excel Worksheet">
+            <FileSpreadsheet size={13} />
+            <span>Export Excel</span>
+          </button>
+
+          <button type="button" onClick={handleExportCSV} className="btn-export-csv" title="Download CSV">
             <Download size={13} />
             <span>Export CSV</span>
           </button>
 
-          <button
-            type="button"
-            onClick={loadOrders}
-            className="btn-header-action"
-            title="Refresh order database"
-          >
+          <button type="button" onClick={() => window.print()} className="btn-export-pdf" title="Print/PDF report">
+            <Printer size={13} />
+            <span>Export PDF</span>
+          </button>
+
+          <button type="button" onClick={handleCreateTestOrder} className="btn-header-action" style={{ background: '#FAF5FF', borderColor: '#D8B4FE', color: '#7E22CE' }} title="Generate 1 Live Test Order in Firebase">
+            <PlusCircle size={13} />
+            <span>+ Test Order</span>
+          </button>
+
+          {orders.length > 0 && (
+            <button type="button" onClick={handleClearAllOrders} className="btn-header-action" style={{ background: '#FFF1F2', borderColor: '#FECDD3', color: '#E11D48' }} title="Clear All Orders from Database">
+              <Trash2 size={13} />
+              <span>Clear All</span>
+            </button>
+          )}
+
+          <button type="button" onClick={loadOrders} className="btn-header-action" title="Refresh from Database">
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
           </button>
         </div>
       </div>
 
-      {/* KEY METRICS BAR */}
-      <div className="admin-metrics-grid">
-        <div className="admin-stat-card">
-          <div className="stat-icon-wrap" style={{ background: '#ECFDF5', color: '#059669' }}>
-            <TrendingUp size={18} />
-          </div>
-          <div>
-            <div className="stat-value">₹{metrics.totalRev.toLocaleString('en-IN')}</div>
-            <div className="stat-label">Total Revenue</div>
-          </div>
+      {/* 2. DATE PRESET & CUSTOM RANGE TOOLBAR */}
+      <div className="admin-date-toolbar">
+        <div className="date-preset-group">
+          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748B', marginRight: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Calendar size={13} /> Date:
+          </span>
+
+          {[
+            { id: 'ALL', label: 'All Time' },
+            { id: 'TODAY', label: 'Today' },
+            { id: 'YESTERDAY', label: 'Yesterday' },
+            { id: 'DAY_BEFORE', label: 'Day Before Yesterday' },
+            { id: 'LAST_7_DAYS', label: 'Last 7 Days' },
+            { id: 'THIS_MONTH', label: 'This Month' },
+            { id: 'LAST_30_DAYS', label: 'Last 30 Days' }
+          ].map(p => {
+            const isActive = datePreset === p.id && !specificDate && !dateFrom && !dateTo;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  setDatePreset(p.id);
+                  setSpecificDate('');
+                  setDateFrom('');
+                  setDateTo('');
+                }}
+                className={`btn-date-preset ${isActive ? 'active' : ''}`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
         </div>
 
+        <div className="date-custom-pickers">
+          <div className="date-picker-box">
+            <span>Specific:</span>
+            <input
+              type="date"
+              value={specificDate}
+              onChange={e => {
+                setSpecificDate(e.target.value);
+                setDatePreset('');
+                setDateFrom('');
+                setDateTo('');
+              }}
+            />
+          </div>
+
+          <div className="date-picker-box">
+            <span>From:</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => {
+                setDateFrom(e.target.value);
+                setSpecificDate('');
+                setDatePreset('');
+              }}
+            />
+            <span>To:</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => {
+                setDateTo(e.target.value);
+                setSpecificDate('');
+                setDatePreset('');
+              }}
+            />
+          </div>
+
+          {(specificDate || dateFrom || dateTo || datePreset !== 'ALL') && (
+            <button type="button" onClick={handleResetFilters} className="btn-date-reset" title="Reset date filters">
+              <RotateCcw size={11} />
+              <span>Reset</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 3. 6 REALTIME ANALYTICS METRIC CARDS */}
+      <div className="admin-metrics-grid-6">
+        {/* Card 1: Total Booked */}
         <div className="admin-stat-card">
-          <div className="stat-icon-wrap" style={{ background: '#EFF6FF', color: '#2563EB' }}>
+          <div className="stat-icon-wrap" style={{ background: '#F5F3FF', color: '#7C3AED' }}>
             <Package size={18} />
           </div>
           <div>
-            <div className="stat-value">{metrics.totalOrders}</div>
-            <div className="stat-label">Total Orders</div>
+            <div className="stat-label">Total Booked</div>
+            <div className="stat-value">{metrics.totalBooked}</div>
+            <div className="stat-subtext">{metrics.totalUnits} unit{metrics.totalUnits !== 1 ? 's' : ''} sold</div>
           </div>
         </div>
 
+        {/* Card 2: Gross Booked */}
         <div className="admin-stat-card">
-          <div className="stat-icon-wrap" style={{ background: '#FEF3C7', color: '#D97706' }}>
-            <Clock size={18} />
+          <div className="stat-icon-wrap" style={{ background: '#EFF6FF', color: '#2563EB' }}>
+            <TrendingUp size={18} />
           </div>
           <div>
-            <div className="stat-value">{metrics.pendingOrders}</div>
-            <div className="stat-label">Pending Orders</div>
+            <div className="stat-label">Gross Booked</div>
+            <div className="stat-value" style={{ color: '#2563EB' }}>₹{metrics.grossBooked.toLocaleString('en-IN')}</div>
+            <div className="stat-subtext">AOV: ₹{metrics.aov.toLocaleString('en-IN')} / order</div>
           </div>
         </div>
 
+        {/* Card 3: Delivered Total [REALIZED] */}
+        <div className="admin-stat-card stat-card-realized">
+          <div className="stat-icon-wrap" style={{ background: '#DCFCE7', color: '#059669' }}>
+            <CheckCircle2 size={18} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className="stat-label" style={{ color: '#065F46' }}>Delivered Total</span>
+              <span className="stat-realized-badge">REALIZED</span>
+            </div>
+            <div className="stat-value" style={{ color: '#059669' }}>₹{metrics.deliveredTotal.toLocaleString('en-IN')}</div>
+            <div className="stat-subtext" style={{ color: '#047857' }}>{metrics.deliveredCount} Orders Delivered</div>
+          </div>
+        </div>
+
+        {/* Card 4: Paid Online */}
+        <div className="admin-stat-card">
+          <div className="stat-icon-wrap" style={{ background: '#FFFBEB', color: '#D97706' }}>
+            <Zap size={18} />
+          </div>
+          <div>
+            <div className="stat-label">Paid Online</div>
+            <div className="stat-value">₹{metrics.onlineTotal.toLocaleString('en-IN')}</div>
+            <div className="stat-subtext">{metrics.onlineCount} Orders</div>
+          </div>
+        </div>
+
+        {/* Card 5: COD Expected */}
+        <div className="admin-stat-card">
+          <div className="stat-icon-wrap" style={{ background: '#FFF7ED', color: '#EA580C' }}>
+            <Flame size={18} />
+          </div>
+          <div>
+            <div className="stat-label">COD Expected</div>
+            <div className="stat-value" style={{ color: '#EA580C' }}>₹{metrics.codTotal.toLocaleString('en-IN')}</div>
+            <div className="stat-subtext">{metrics.codCount} Orders</div>
+          </div>
+        </div>
+
+        {/* Card 6: Fulfillment */}
         <div className="admin-stat-card">
           <div className="stat-icon-wrap" style={{ background: '#EEF2FF', color: '#4F46E5' }}>
             <Truck size={18} />
           </div>
           <div>
-            <div className="stat-value">{metrics.dispatchedOrders}</div>
-            <div className="stat-label">Shipped via Shiprocket</div>
+            <div className="stat-label">Fulfillment</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', background: '#EEF2FF', color: '#4338CA' }}>
+                {metrics.inTransitCount} In-Transit
+              </span>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', background: '#FEE2E2', color: '#991B1B' }}>
+                {metrics.cancelledCount} Cancelled
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* SEARCH & STATUS TABS */}
+      {/* 4. SEARCH & STATUS FILTER CONTROLS */}
       <div className="admin-controls-card">
         <div className="admin-search-wrapper">
           <input
             type="text"
             className="admin-search-input"
-            placeholder="Search Order #, customer, phone, city, AWB, courier..."
+            placeholder="Search by Order ID, Name, Phone, City, AWB..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
-          <Search
-            size={14}
-            style={{
-              position: 'absolute',
-              right: '10px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#94A3B8'
-            }}
-          />
+          <Search size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
         </div>
 
-        <div className="admin-status-tabs">
-          {(['ALL', 'PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as const).map(st => (
-            <button
-              key={st}
-              type="button"
-              className={`admin-tab-btn ${selectedStatus === st ? 'active' : ''}`}
-              onClick={() => setSelectedStatus(st)}
-            >
-              <span>{st}</span>
-              <span className="tab-count-badge">{tabCounts[st] || 0}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* DATE FILTERING & SORTING BAR (Today, Yesterday, Last 7 Days, All + Sort) */}
-      <div className="admin-date-filter-bar">
-        <div className="date-pills-wrap">
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', display: 'inline-flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
-            <Calendar size={13} /> Date:
-          </span>
-
-          <button
-            type="button"
-            className={`date-pill-btn ${dateFilter === 'ALL' ? 'active' : ''}`}
-            onClick={() => setDateFilter('ALL')}
-          >
-            All Dates
-            <span className="date-pill-count">{dateCounts.ALL}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`date-pill-btn ${dateFilter === 'TODAY' ? 'active' : ''}`}
-            onClick={() => setDateFilter('TODAY')}
-          >
-            ⚡ Today
-            <span className="date-pill-count">{dateCounts.TODAY}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`date-pill-btn ${dateFilter === 'YESTERDAY' ? 'active' : ''}`}
-            onClick={() => setDateFilter('YESTERDAY')}
-          >
-            ⏳ Yesterday
-            <span className="date-pill-count">{dateCounts.YESTERDAY}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`date-pill-btn ${dateFilter === 'WEEK' ? 'active' : ''}`}
-            onClick={() => setDateFilter('WEEK')}
-          >
-            Last 7 Days
-            <span className="date-pill-count">{dateCounts.WEEK}</span>
-          </button>
-        </div>
-
-        {/* Sort Selector */}
-        <div className="admin-sort-wrap">
-          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748B', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <ArrowUpDown size={12} /> Sort:
-          </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value as any)}
-            className="admin-sort-select"
+            value={selectedStatus}
+            onChange={e => setSelectedStatus(e.target.value)}
+            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.74rem', fontWeight: 700, color: '#334155', background: '#FFF' }}
           >
-            <option value="DATE_DESC">Newest First</option>
-            <option value="DATE_ASC">Oldest First</option>
+            <option value="ALL">All Order Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="CONFIRMED">Confirmed</option>
+            <option value="SHIPPED">Shipped</option>
+            <option value="DELIVERED">Delivered</option>
+            <option value="CANCELLED">Cancelled</option>
           </select>
+
+          <select
+            value={selectedPaymentMethod}
+            onChange={e => setSelectedPaymentMethod(e.target.value)}
+            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.74rem', fontWeight: 700, color: '#334155', background: '#FFF' }}
+          >
+            <option value="ALL">All Payment Methods</option>
+            <option value="COD">Cash on Delivery (COD)</option>
+            <option value="ONLINE">Paid Online (Razorpay)</option>
+            <option value="UPI">UPI Payment</option>
+          </select>
+
+          {(searchQuery || selectedStatus !== 'ALL' || selectedPaymentMethod !== 'ALL') && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              style={{ background: '#FFF1F2', border: '1px solid #FECDD3', color: '#E11D48', padding: '5px 10px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}
+            >
+              Clear Filters
+            </button>
+          )}
         </div>
       </div>
 
-      {/* FEEDBACK TOAST */}
-      {feedbackMsg && (
-        <div
-          style={{
-            background: '#ECFDF5',
-            border: '1px solid #A7F3D0',
-            color: '#065F46',
-            padding: '10px 14px',
-            borderRadius: '8px',
-            fontSize: '0.84rem',
-            fontWeight: 600,
-            marginBottom: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
-          }}
-        >
-          <CheckCircle2 size={16} />
-          <span>{feedbackMsg}</span>
-        </div>
-      )}
-
-      {/* DESKTOP ORDERS TABLE */}
+      {/* 5. ORDERS DATA TABLE */}
       <div className="admin-table-container">
         <table className="admin-orders-table">
           <thead>
             <tr>
-              <th style={{ width: '11%' }}>ORDER &amp; DATE</th>
-              <th style={{ width: '17%' }}>CLIENT INFORMATION</th>
-              <th style={{ width: '12%' }}>PRODUCT / ITEMS</th>
-              <th style={{ width: '8%' }}>AMOUNT</th>
-              <th style={{ width: '11%' }}>PAYMENT</th>
-              <th style={{ width: '10%' }}>STATUS</th>
-              <th style={{ width: '15%' }}>SHIPROCKET COURIER</th>
-              <th style={{ width: '16%', textAlign: 'right', paddingRight: '14px' }}>ACTIONS</th>
+              <th style={{ width: '13%' }}>ORDER & DATE</th>
+              <th style={{ width: '23%' }}>CLIENT INFORMATION</th>
+              <th style={{ width: '17%' }}>PRODUCT / ITEMS</th>
+              <th style={{ width: '9%' }}>AMOUNT</th>
+              <th style={{ width: '10%' }}>PAYMENT</th>
+              <th style={{ width: '11%' }}>SHIPPING / AWB</th>
+              <th style={{ width: '9%', textAlign: 'center' }}>SETTLEMENT</th>
+              <th style={{ width: '18%', textAlign: 'right', paddingRight: '14px' }}>ACTIONS</th>
             </tr>
           </thead>
+
           <tbody>
-            {filteredOrders.length > 0 ? (
+            {filteredOrders.length === 0 ? (
+              <tr>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '48px 16px', color: '#64748B' }}>
+                  <Package size={36} style={{ margin: '0 auto 10px auto', color: '#94A3B8' }} />
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0F172A' }}>
+                    No Orders Found
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '4px' }}>
+                    {orders.length === 0
+                      ? 'Database is currently empty (0 orders). Use "+ Test Order" above to generate a sample order!'
+                      : 'No orders match your current search or date filter criteria.'}
+                  </p>
+                </td>
+              </tr>
+            ) : (
               filteredOrders.map(order => {
-                const statusClass = (order.orderStatus || 'pending').toLowerCase();
-                const paymentClass = (order.paymentStatus || 'pending').toLowerCase();
-                const customer = order.customer || { name: 'Customer', phone: '', city: '', state: '', pincode: '', address: '' };
-                const items = Array.isArray(order.items) ? order.items : [];
-                const waUrl = getWhatsAppUrl(
-                  customer.phone,
-                  customer.name,
-                  order.orderNumber,
-                  order.orderStatus || 'Pending'
-                );
-                const isAssigningThis = assigningOrderId === order.id;
+                const initialChar = (order.customer.name && order.customer.name.trim().charAt(0).toUpperCase()) || 'C';
+                const isCOD = order.paymentMethod === 'cod';
+                const isPaid = order.paymentStatus === 'paid';
+                const firstItem = order.items && order.items[0];
+                const totalUnits = order.items?.reduce((s, i) => s + (i.qty || 1), 0) || 1;
 
                 return (
                   <tr
                     key={order.id}
-                    className={`row-status-${statusClass} admin-order-row-clickable`}
-                    onClick={() => openOrderModal(order)}
-                    title="Click row to view full order details"
+                    className={`row-status-${order.orderStatus.toLowerCase()}`}
                   >
-                    {/* COMBINED ORDER ID & DATE (2-LINE DOUBLE ROW FIT) */}
+                    {/* Order & Date */}
                     <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <strong
-                          style={{
-                            color: '#2563EB',
-                            fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-                            fontSize: '0.82rem',
-                            fontWeight: 800
-                          }}
-                          title="Click to view complete order"
-                        >
-                          {order.orderNumber}
-                        </strong>
-                        <span style={{ color: '#64748B', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }) : 'Recent'}
+                      <div
+                        onClick={() => openOrderModal(order)}
+                        style={{ fontWeight: 800, color: '#2563EB', cursor: 'pointer' }}
+                      >
+                        {order.orderNumber}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#94A3B8', marginTop: '1px' }}>
+                        {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short'
+                        })}, {new Date(order.createdAt).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </div>
+                    </td>
+
+                    {/* Client Information */}
+                    <td>
+                      <div className="client-oneline">
+                        <span className="client-avatar">{initialChar}</span>
+                        <span className="client-name" title={order.customer.name}>{order.customer.name}</span>
+                        <span className="client-dot">•</span>
+                        <a href={`tel:${order.customer.phone}`} className="client-phone" style={{ textDecoration: 'none' }}>
+                          {order.customer.phone}
+                        </a>
+                        <span className="client-dot">•</span>
+                        <span className="client-city" title={`${order.customer.city} (${order.customer.pincode})`}>
+                          {order.customer.city}
                         </span>
                       </div>
                     </td>
 
-                    {/* CLIENT CONTENT IN STRICTLY ONE LINE */}
+                    {/* Product / Items */}
                     <td>
-                      <div
-                        className="client-oneline"
-                        title={`${customer.name} | ${customer.phone} | ${customer.city}, ${customer.state} (${customer.pincode})`}
-                      >
-                        <span className="client-avatar">{getInitials(customer.name)}</span>
-                        <span className="client-name">{customer.name}</span>
-                        <span className="client-dot">·</span>
-                        <span className="client-phone">{customer.phone}</span>
-                        <span className="client-dot">·</span>
-                        <span className="client-city">{customer.city}</span>
-                      </div>
-                    </td>
-
-                    {/* Items (1 line) */}
-                    <td>
-                      <div className="items-oneline" title={items.map(i => `${i.name || 'Item'} (x${i.qty || 1})`).join(', ')}>
-                        <span>
-                          {items.length === 1
-                            ? `${items[0].qty || 1}x ${(items[0].name || 'Product').replace('HOPEKRAFT ', '').replace('Wooden ', '')}`
-                            : `${items.reduce((s, i) => s + (i.qty || 1), 0)} items`}
+                      <div className="items-oneline">
+                        <span title={firstItem ? firstItem.name : ''}>
+                          {totalUnits > 1 ? `${totalUnits}x items` : `1x ${firstItem ? firstItem.name : 'Item'}`}
                         </span>
                       </div>
                     </td>
 
                     {/* Amount */}
                     <td>
-                      <strong style={{ color: '#0F172A', fontWeight: 800 }}>
+                      <strong style={{ color: '#0F172A', fontSize: '0.8rem' }}>
                         ₹{order.total.toLocaleString('en-IN')}
                       </strong>
                     </td>
 
                     {/* Payment */}
                     <td>
-                      <span className={`payment-pill ${paymentClass}`}>
-                        {order.paymentStatus} · {order.paymentMethod.toUpperCase()}
+                      <span className={`payment-pill ${isPaid ? 'paid' : 'pending'}`}>
+                        {isCOD ? 'COD' : isPaid ? `PAID - ${order.paymentMethod.toUpperCase()}` : `PENDING`}
                       </span>
                     </td>
 
-                    {/* Order Status */}
-                    <td>
-                      <span className={`status-pill ${statusClass}`}>
-                        <span className="status-dot"></span>
-                        {order.orderStatus}
-                      </span>
-                    </td>
-
-                    {/* MOVE TO SHIPROCKET / AWB TRACKING */}
+                    {/* Shipping / AWB */}
                     <td>
                       {order.awbCode ? (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <a
-                            href={order.trackingUrl || `https://shiprocket.co/tracking/${order.awbCode}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="courier-badge"
-                            title={`Track in Shiprocket: ${order.awbCode}`}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Truck size={10} /> {order.courierName || 'Shiprocket'}: ...{order.awbCode.slice(-7)}
-                          </a>
-                        </div>
+                        <a
+                          href={order.trackingUrl || '#'}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="courier-badge"
+                          title={`Track on ${order.courierName}`}
+                        >
+                          <Truck size={11} />
+                          <span>{order.courierName || 'Shiprocket'}: {order.awbCode}</span>
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: '0.68rem', color: '#D97706', fontWeight: 700 }}>
+                          ● Processing Dispatch
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Settlement */}
+                    <td style={{ textAlign: 'center' }}>
+                      {order.orderStatus === 'Delivered' ? (
+                        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#059669', background: '#DCFCE7', padding: '3px 8px', borderRadius: '4px' }}>
+                          ✓ Settled
+                        </span>
                       ) : (
                         <button
                           type="button"
-                          className="btn-assign-shiprocket"
-                          disabled={isAssigningThis}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAssignToShiprocket(order.id);
-                          }}
-                          title="Move to Shiprocket immediately"
+                          onClick={() => handleMarkDelivered(order)}
+                          className="btn-row-settle"
+                          title="Mark order as Delivered & Settled"
                         >
-                          <Truck size={11} className={isAssigningThis ? 'animate-spin' : ''} />
-                          {isAssigningThis ? 'Moving...' : 'Move to Shiprocket'}
+                          <Check size={11} style={{ color: '#059669' }} />
+                          <span>Mark Delivered</span>
                         </button>
                       )}
                     </td>
 
-                    {/* ACTIONS (PRO DASHBOARD DESIGN + NEVER CUT OFF) */}
-                    <td className="td-actions" style={{ position: 'relative' }}>
+                    {/* Actions */}
+                    <td className="td-actions">
                       <div className="actions-btn-group">
+                        {/* WhatsApp Customer */}
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openOrderModal(order);
-                          }}
-                          className="btn-action-pro view"
-                          title="Inspect Order Details"
+                          onClick={() => handleWhatsAppCustomer(order)}
+                          className="btn-row-action whatsapp"
+                          title="WhatsApp Customer"
                         >
-                          <Eye size={13} />
+                          <MessageSquare size={12} />
+                          <span>WhatsApp</span>
                         </button>
 
+                        {/* Shiprocket Dispatch */}
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            printPackagingSlip(order);
-                          }}
-                          className="btn-action-pro print"
-                          title="Print Packaging Slip & Tax Invoice"
+                          onClick={() => handleAssignToShiprocket(order.id)}
+                          disabled={assigningOrderId === order.id || !!order.awbCode}
+                          className="btn-row-action shiprocket"
+                          title={order.awbCode ? 'Pushed to Shiprocket' : 'Push to Shiprocket'}
                         >
-                          <Printer size={13} />
+                          <Truck size={12} />
+                          <span>Shiprocket</span>
                         </button>
 
-                        <a
-                          href={waUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="btn-action-pro whatsapp"
-                          title="Chat with Customer on WhatsApp"
-                        >
-                          <MessageSquare size={13} />
-                        </a>
-
+                        {/* Change Product / Custom Pricing */}
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDeleteModal(order);
-                          }}
-                          className="btn-action-pro delete"
-                          title="Delete Order"
+                          onClick={() => openChangeModal(order)}
+                          className="btn-row-action change"
+                          title="Change Product & Custom Pricing"
                         >
-                          <Trash2 size={13} />
+                          <ArrowRightLeft size={12} />
+                          <span>Change</span>
                         </button>
 
-                        {/* MORE OPTIONS & STATUS CHANGER */}
-                        <div style={{ position: 'relative' }}>
+                        {/* View Order Modal */}
+                        <button
+                          type="button"
+                          onClick={() => openOrderModal(order)}
+                          className="btn-row-action view"
+                          title="View order details"
+                        >
+                          <Eye size={12} />
+                          <span>View</span>
+                        </button>
+
+                        {/* Cancel Order */}
+                        {order.orderStatus !== 'Cancelled' && (
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveDropdownOrderId(prev => prev === order.id ? null : order.id);
-                            }}
-                            className="btn-action-pro more"
-                            title="More Actions & Change Status"
+                            onClick={() => handleCancelOrder(order)}
+                            className="btn-row-action cancel"
+                            title="Cancel order"
                           >
-                            <MoreHorizontal size={14} />
+                            Cancel
                           </button>
+                        )}
 
-                          {activeDropdownOrderId === order.id && (
-                            <div
-                              className="admin-actions-dropdown-menu"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                type="button"
-                                className="admin-dropdown-item"
-                                onClick={() => {
-                                  setActiveDropdownOrderId(null);
-                                  openOrderModal(order);
-                                }}
-                              >
-                                <Eye size={13} color="#2563EB" />
-                                <span>View Full Details</span>
-                              </button>
-
-                              {!order.awbCode && (
-                                <button
-                                  type="button"
-                                  className="admin-dropdown-item"
-                                  onClick={() => {
-                                    setActiveDropdownOrderId(null);
-                                    handleAssignToShiprocket(order.id);
-                                  }}
-                                >
-                                  <Truck size={13} color="#4F46E5" />
-                                  <span>Move to Shiprocket</span>
-                                </button>
-                              )}
-
-                              <div style={{ borderTop: '1px solid #F1F5F9', margin: '3px 0' }} />
-
-                              <div style={{ padding: '3px 10px 1px', fontSize: '0.64rem', color: '#94A3B8', fontWeight: 800 }}>
-                                CHANGE STATUS
-                              </div>
-
-                              {(['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'] as OrderStatus[]).map(st => (
-                                <button
-                                  key={st}
-                                  type="button"
-                                  className="admin-dropdown-item"
-                                  style={{
-                                    paddingLeft: '16px',
-                                    fontWeight: order.orderStatus === st ? 800 : 500,
-                                    color: order.orderStatus === st ? '#2563EB' : '#475569'
-                                  }}
-                                  onClick={() => {
-                                    setActiveDropdownOrderId(null);
-                                    handleQuickStatusChange(order.id, st);
-                                  }}
-                                >
-                                  <span>{order.orderStatus === st ? '✓ ' : '• '}{st}</span>
-                                </button>
-                              ))}
-
-                              <div style={{ borderTop: '1px solid #F1F5F9', margin: '3px 0' }} />
-
-                              <button
-                                type="button"
-                                className="admin-dropdown-item"
-                                onClick={() => {
-                                  setActiveDropdownOrderId(null);
-                                  printPackagingSlip(order);
-                                }}
-                              >
-                                <Printer size={13} color="#0077C8" />
-                                <span>Print Packaging Slip</span>
-                              </button>
-
-                              <a
-                                href={waUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="admin-dropdown-item"
-                                onClick={() => setActiveDropdownOrderId(null)}
-                              >
-                                <MessageSquare size={13} color="#15803D" />
-                                <span>WhatsApp Customer</span>
-                              </a>
-
-                              <button
-                                type="button"
-                                className="admin-dropdown-item danger"
-                                onClick={() => {
-                                  setActiveDropdownOrderId(null);
-                                  openDeleteModal(order);
-                                }}
-                              >
-                                <Trash2 size={13} />
-                                <span>Delete Order Record</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        {/* Delete Order */}
+                        <button
+                          type="button"
+                          onClick={() => openDeleteModal(order)}
+                          className="btn-row-action delete"
+                          title="Delete Order"
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       </div>
                     </td>
                   </tr>
                 );
               })
-            ) : (
-              <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '36px', color: '#94A3B8' }}>
-                  No orders match the current filter or search criteria.
-                </td>
-              </tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* MOBILE RESPONSIVE CARDS VIEW */}
-      <div className="admin-mobile-cards">
-        {filteredOrders.length > 0 ? (
-          filteredOrders.map(order => {
-            const statusClass = order.orderStatus.toLowerCase();
-            const paymentClass = order.paymentStatus.toLowerCase();
-            const waUrl = getWhatsAppUrl(
-              order.customer.phone,
-              order.customer.name,
-              order.orderNumber,
-              order.orderStatus
-            );
-            const isAssigningThis = assigningOrderId === order.id;
-
-            return (
-              <div key={order.id} className={`mobile-order-card card-status-${statusClass}`}>
-                <div className="mobile-card-header">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <strong
-                      style={{
-                        color: '#2563EB',
-                        fontFamily: 'ui-monospace, monospace',
-                        fontSize: '0.88rem'
-                      }}
-                      onClick={() => openOrderModal(order)}
-                    >
-                      {order.orderNumber}
-                    </strong>
-                    <span className={`status-pill ${statusClass}`}>
-                      <span className="status-dot"></span>
-                      {order.orderStatus}
-                    </span>
-                  </div>
-
-                  <strong style={{ fontSize: '0.95rem', color: '#0F172A' }}>
-                    ₹{order.total.toLocaleString('en-IN')}
-                  </strong>
-                </div>
-
-                <div className="mobile-client-line">
-                  <span className="client-avatar" style={{ width: '20px', height: '20px', fontSize: '0.62rem' }}>
-                    {getInitials(order.customer.name)}
-                  </span>
-                  <span style={{ fontWeight: 700 }}>{order.customer.name}</span>
-                  <span style={{ color: '#CBD5E1' }}>·</span>
-                  <span style={{ color: '#475569', fontSize: '0.75rem' }}>{order.customer.phone}</span>
-                  <span style={{ color: '#CBD5E1' }}>·</span>
-                  <span style={{ color: '#64748B', fontSize: '0.75rem' }}>{order.customer.city}</span>
-                </div>
-
-                <div className="mobile-card-details">
-                  <span>
-                    📦 {order.items.reduce((s, i) => s + i.qty, 0)} item(s) · {order.items[0]?.name.slice(0, 20)}...
-                  </span>
-                  <span className={`payment-pill ${paymentClass}`}>
-                    {order.paymentStatus} ({order.paymentMethod})
-                  </span>
-                </div>
-
-                <div className="mobile-card-actions">
-                  <button
-                    type="button"
-                    onClick={() => openOrderModal(order)}
-                    className="btn-action-view"
-                    style={{ flex: 1, justifyContent: 'center', padding: '6px' }}
-                  >
-                    <Eye size={13} /> Details
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => printPackagingSlip(order)}
-                    className="btn-action-view"
-                    style={{ flex: 1, justifyContent: 'center', padding: '6px', color: '#0077C8' }}
-                  >
-                    <Printer size={13} /> Slip
-                  </button>
-
-                  {order.awbCode ? (
-                    <a
-                      href={order.trackingUrl || `https://shiprocket.co/tracking/${order.awbCode}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="courier-badge"
-                      style={{ flex: 1, justifyContent: 'center', padding: '6px' }}
-                    >
-                      <Truck size={12} /> {order.awbCode}
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn-assign-shiprocket"
-                      style={{ flex: 1, justifyContent: 'center', padding: '6px' }}
-                      disabled={isAssigningThis}
-                      onClick={() => handleAssignToShiprocket(order.id)}
-                    >
-                      <Truck size={12} className={isAssigningThis ? 'animate-spin' : ''} />
-                      {isAssigningThis ? 'Assigning...' : 'Assign to Shiprocket'}
-                    </button>
-                  )}
-
-                  <a
-                    href={waUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-action-wa"
-                    style={{ padding: '6px 12px' }}
-                  >
-                    <MessageSquare size={13} />
-                  </a>
-
-                  <button
-                    type="button"
-                    onClick={() => openDeleteModal(order)}
-                    className="btn-action-delete"
-                    style={{ padding: '6px 10px' }}
-                    title="Delete Order"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div style={{ textAlign: 'center', padding: '30px', color: '#94A3B8', background: '#FFFFFF', borderRadius: '8px' }}>
-            No orders match the selected filters.
-          </div>
-        )}
-      </div>
-
-      {/* ORDER DETAILS MODAL DRAWER */}
+      {/* ========================================================================= */}
+      {/* MODAL 1: VIEW ORDER DETAILS (Image 4)                                     */}
+      {/* ========================================================================= */}
       {selectedOrder && (
-        <div className="admin-modal-overlay" onClick={() => setSelectedOrder(null)}>
-          <div className="admin-modal-box" onClick={e => e.stopPropagation()}>
-            <button
-              type="button"
-              className="admin-modal-close"
-              onClick={() => setSelectedOrder(null)}
-              aria-label="Close modal"
-            >
-              <X size={16} />
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A' }}>
-                Order {selectedOrder.orderNumber}
-              </h2>
-              <span className={`status-pill ${selectedOrder.orderStatus.toLowerCase()}`}>
-                <span className="status-dot"></span>
-                {selectedOrder.orderStatus}
-              </span>
+        <div className="pro-modal-overlay">
+          <div className="pro-modal-box">
+            {/* Header */}
+            <div className="pro-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 className="pro-modal-title">Order {selectedOrder.orderNumber}</h3>
+                <span className={`status-pill ${selectedOrder.orderStatus.toLowerCase()}`}>
+                  <span className="status-dot"></span>
+                  {selectedOrder.orderStatus}
+                </span>
+              </div>
+              <button type="button" onClick={() => setSelectedOrder(null)} className="pro-modal-close-btn">
+                ✕
+              </button>
             </div>
 
-            {/* Quick Status Updater */}
-            <div
-              style={{
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                borderRadius: '8px',
-                padding: '12px',
-                marginBottom: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '10px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>Status:</label>
-                <select
-                  value={newStatus}
-                  onChange={e => setNewStatus(e.target.value as OrderStatus)}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid #CBD5E1',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    outline: 'none',
-                    background: '#FFFFFF'
-                  }}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Confirmed">Confirmed</option>
-                  <option value="Shipped">Shipped</option>
-                  <option value="Delivered">Delivered</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-                <button
-                  type="button"
-                  disabled={statusUpdateLoading}
-                  onClick={handleUpdateStatus}
-                  style={{
-                    background: '#2563EB',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '6px 12px',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  {statusUpdateLoading ? 'Updating...' : 'Save'}
-                </button>
+            {/* Body */}
+            <div className="pro-modal-body">
+              {/* 2-Column Info Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 12px', fontSize: '0.76rem' }}>
+                  <div style={{ fontWeight: 800, color: '#1E40AF', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    👤 Customer Info
+                  </div>
+                  <div><strong>Name:</strong> {selectedOrder.customer.name}</div>
+                  <div style={{ marginTop: '2px' }}>
+                    <strong>Phone:</strong> <a href={`tel:${selectedOrder.customer.phone}`} style={{ color: '#2563EB', textDecoration: 'none' }}>{selectedOrder.customer.phone}</a>
+                  </div>
+                  <div style={{ marginTop: '2px' }}><strong>Email:</strong> {selectedOrder.customer.email || 'N/A'}</div>
+                </div>
+
+                <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 12px', fontSize: '0.76rem' }}>
+                  <div style={{ fontWeight: 800, color: '#4338CA', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    📍 Shipping Address
+                  </div>
+                  <div>{selectedOrder.customer.address}</div>
+                  <div style={{ fontWeight: 700, color: '#0F172A', marginTop: '3px' }}>
+                    {selectedOrder.customer.city}, {selectedOrder.customer.state} - {selectedOrder.customer.pincode}
+                  </div>
+                </div>
               </div>
 
-              {!selectedOrder.awbCode && (
-                <button
-                  type="button"
-                  disabled={assigningOrderId === selectedOrder.id}
-                  onClick={() => handleAssignToShiprocket(selectedOrder.id)}
-                  className="btn-assign-shiprocket"
-                  style={{ padding: '6px 12px' }}
-                >
-                  <Truck size={13} className={assigningOrderId === selectedOrder.id ? 'animate-spin' : ''} />
-                  {assigningOrderId === selectedOrder.id ? 'Assigning...' : 'Assign to Shiprocket'}
-                </button>
-              )}
-            </div>
-
-            {/* Customer & Address Details */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                gap: '12px',
-                marginBottom: '16px'
-              }}
-            >
-              <div
-                style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  padding: '12px'
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '8px'
-                  }}
-                >
-                  <strong style={{ fontSize: '0.84rem', color: '#0F172A' }}>Client Information</strong>
+              {/* Purchased Items Box */}
+              <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px', background: '#FFF' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                    Purchased Items
+                  </div>
                   <button
                     type="button"
-                    onClick={() =>
-                      copyToClipboard(
-                        `${selectedOrder.customer.name}\n${selectedOrder.customer.phone}\n${selectedOrder.customer.address}, ${selectedOrder.customer.city} ${selectedOrder.customer.pincode}`
-                      )
-                    }
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#2563EB',
-                      cursor: 'pointer',
-                      fontSize: '0.74rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontWeight: 600
+                    onClick={() => {
+                      const ord = selectedOrder;
+                      setSelectedOrder(null);
+                      openChangeModal(ord);
                     }}
+                    style={{ background: '#EEF2FF', border: '1px solid #C7D2FE', color: '#4338CA', padding: '3px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    <Copy size={11} /> Copy Address
+                    <ArrowRightLeft size={11} />
+                    <span>Change / Swap Product</span>
                   </button>
                 </div>
-                <p style={{ fontSize: '0.82rem', color: '#334155', margin: '3px 0' }}>
-                  <strong>Name:</strong> {selectedOrder.customer.name}
-                </p>
-                <p style={{ fontSize: '0.82rem', color: '#334155', margin: '3px 0' }}>
-                  <strong>Phone:</strong> {selectedOrder.customer.phone}
-                </p>
-                {selectedOrder.customer.email && (
-                  <p style={{ fontSize: '0.82rem', color: '#334155', margin: '3px 0' }}>
-                    <strong>Email:</strong> {selectedOrder.customer.email}
-                  </p>
-                )}
-                <p style={{ fontSize: '0.82rem', color: '#334155', marginTop: '6px' }}>
-                  <strong>Shipping Address:</strong> {selectedOrder.customer.address},{' '}
-                  {selectedOrder.customer.city}, {selectedOrder.customer.pincode},{' '}
-                  {selectedOrder.customer.state}
-                </p>
 
-                <div style={{ marginTop: '10px' }}>
-                  <a
-                    href={getWhatsAppUrl(
-                      selectedOrder.customer.phone,
-                      selectedOrder.customer.name,
-                      selectedOrder.orderNumber,
-                      selectedOrder.orderStatus
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-action-wa"
-                    style={{ width: '100%', justifyContent: 'center', padding: '6px' }}
-                  >
-                    <MessageSquare size={13} /> Chat on WhatsApp (+91 {selectedOrder.customer.phone})
-                  </a>
-                </div>
-              </div>
-
-              {/* Payment & Logistics Info */}
-              <div
-                style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  padding: '12px'
-                }}
-              >
-                <strong style={{ fontSize: '0.84rem', color: '#0F172A', display: 'block', marginBottom: '8px' }}>
-                  Payment &amp; Logistics
-                </strong>
-                <p style={{ fontSize: '0.82rem', color: '#334155', margin: '3px 0' }}>
-                  <strong>Payment Mode:</strong> {selectedOrder.paymentMethod.toUpperCase()} (
-                  <span className={`payment-pill ${selectedOrder.paymentStatus.toLowerCase()}`}>
-                    {selectedOrder.paymentStatus}
-                  </span>
-                  )
-                </p>
-                {selectedOrder.razorpayPaymentId && (
-                  <p style={{ fontSize: '0.78rem', color: '#64748B', margin: '3px 0', fontFamily: 'monospace' }}>
-                    <strong>Razorpay ID:</strong> {selectedOrder.razorpayPaymentId}
-                  </p>
-                )}
-                {selectedOrder.courierName && (
-                  <p style={{ fontSize: '0.82rem', color: '#334155', marginTop: '6px' }}>
-                    <strong>Courier:</strong> {selectedOrder.courierName}
-                  </p>
-                )}
-                {selectedOrder.awbCode && (
-                  <p style={{ fontSize: '0.82rem', color: '#334155', margin: '3px 0' }}>
-                    <strong>AWB Code:</strong> {selectedOrder.awbCode}
-                  </p>
-                )}
-                {selectedOrder.trackingUrl && (
-                  <a
-                    href={selectedOrder.trackingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '0.78rem',
-                      color: '#4F46E5',
-                      fontWeight: 700,
-                      marginTop: '6px'
-                    }}
-                  >
-                    Track in Shiprocket ↗
-                  </a>
-                )}
-              </div>
-            </div>
-
-            {/* Ordered Items */}
-            <div
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: '8px',
-                padding: '12px',
-                marginBottom: '16px'
-              }}
-            >
-              <strong style={{ fontSize: '0.84rem', color: '#0F172A', display: 'block', marginBottom: '8px' }}>
-                Order Items Summary
-              </strong>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {selectedOrder.items.map((item, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      borderBottom: '1px solid #F1F5F9',
-                      paddingBottom: '8px'
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        minWidth: '36px',
-                        borderRadius: '6px',
-                        overflow: 'hidden',
-                        background: '#F8FAFC',
-                        border: '1px solid #E2E8F0'
-                      }}
-                    >
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
+                {selectedOrder.items?.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderTop: idx > 0 ? '1px solid #F1F5F9' : 'none', fontSize: '0.76rem' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#0F172A' }}>{item.name}</div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748B' }}>SKU: HK-{item.id.toUpperCase()} • Qty: {item.qty}</div>
                     </div>
-                    <div style={{ flex: 1, fontSize: '0.82rem' }}>
-                      <p style={{ fontWeight: 600, color: '#0F172A' }}>{item.name}</p>
-                      <span style={{ color: '#64748B', fontSize: '0.74rem' }}>
-                        Qty: {item.qty} × ₹{item.price.toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                    <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#0F172A' }}>
-                      ₹{(item.price * item.qty).toLocaleString('en-IN')}
-                    </span>
+                    <strong style={{ color: '#0F172A' }}>₹{(item.price * item.qty).toLocaleString('en-IN')}.00</strong>
                   </div>
                 ))}
               </div>
 
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  borderTop: '1px solid #E2E8F0',
-                  paddingTop: '8px',
-                  marginTop: '8px',
-                  fontWeight: 800,
-                  fontSize: '0.95rem',
-                  color: '#0F172A'
-                }}
-              >
-                <span>Grand Total:</span>
-                <span style={{ color: '#2563EB' }}>₹{selectedOrder.total.toLocaleString('en-IN')}</span>
+              {/* Order Breakdown Box */}
+              <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 12px', fontSize: '0.76rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                  <span>Items Subtotal:</span>
+                  <strong>₹{selectedOrder.subtotal.toLocaleString('en-IN')}</strong>
+                </div>
+                {selectedOrder.discount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#15803D' }}>
+                    <span>Discount:</span>
+                    <strong>-₹{selectedOrder.discount.toLocaleString('en-IN')}</strong>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                  <span>Delivery:</span>
+                  <strong>{selectedOrder.shipping > 0 ? `₹${selectedOrder.shipping}` : 'FREE'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #E2E8F0', paddingTop: '6px', marginTop: '2px', fontSize: '0.88rem' }}>
+                  <strong style={{ color: '#0F172A' }}>Total Payable:</strong>
+                  <strong style={{ color: '#2563EB', fontSize: '0.95rem' }}>₹{selectedOrder.total.toLocaleString('en-IN')}.00</strong>
+                </div>
+                <div style={{ fontSize: '0.68rem', color: '#64748B', marginTop: '3px' }}>
+                  Payment Method: <strong>{selectedOrder.paymentMethod.toUpperCase()}</strong> • Status: <strong>{selectedOrder.paymentStatus.toUpperCase()}</strong>
+                </div>
+              </div>
+
+              {/* Shipment Box */}
+              <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 12px', fontSize: '0.74rem' }}>
+                <div style={{ fontWeight: 800, color: '#0F172A', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Truck size={13} style={{ color: '#2563EB' }} /> Shipment & Delivery Settlement
+                </div>
+                <div style={{ color: '#475569' }}>Status: <strong>{selectedOrder.shippingStatus}</strong></div>
+                <div style={{ color: '#475569', marginTop: '2px' }}>Courier: <strong>{selectedOrder.courierName || 'Not yet dispatched'}</strong></div>
+                <div style={{ color: '#475569', marginTop: '2px' }}>AWB: <strong style={{ fontFamily: 'monospace' }}>{selectedOrder.awbCode || 'Pending'}</strong></div>
+                {selectedOrder.trackingUrl && (
+                  <div style={{ marginTop: '4px' }}>
+                    <a href={selectedOrder.trackingUrl} target="_blank" rel="noreferrer" style={{ color: '#2563EB', fontWeight: 700, textDecoration: 'none' }}>
+                      Open Tracking Link ↗
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Modal Actions Footer */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '10px', borderTop: '1px solid #F1F5F9' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  const o = selectedOrder;
-                  setSelectedOrder(null);
-                  openDeleteModal(o);
-                }}
-                className="btn-action-delete"
-                style={{ padding: '6px 12px', fontSize: '0.78rem' }}
-                title="Delete this order record"
-              >
-                <Trash2 size={13} /> Delete Order Record
+            {/* Footer Action Buttons */}
+            <div className="pro-modal-footer">
+              <button type="button" onClick={() => setSelectedOrder(null)} className="btn-header-action">
+                Close
+              </button>
+
+              <button type="button" onClick={() => handleWhatsAppCustomer(selectedOrder)} className="btn-row-action whatsapp">
+                <MessageSquare size={12} />
+                <span>WhatsApp Customer</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => printPackagingSlip(selectedOrder)}
-                className="btn-header-action"
-                style={{ padding: '7px 14px', background: '#0077C8', color: '#FFFFFF', borderColor: '#0077C8', fontWeight: 700 }}
+                onClick={() => {
+                  const ord = selectedOrder;
+                  setSelectedOrder(null);
+                  openChangeModal(ord);
+                }}
+                className="btn-row-action change"
               >
-                <Printer size={14} /> Print Packaging Slip
+                <ArrowRightLeft size={12} />
+                <span>Change Product</span>
+              </button>
+
+              {!selectedOrder.awbCode && (
+                <button
+                  type="button"
+                  onClick={() => handleAssignToShiprocket(selectedOrder.id)}
+                  className="btn-assign-shiprocket"
+                >
+                  <Truck size={12} />
+                  <span>Move to Shiprocket</span>
+                </button>
+              )}
+
+              {selectedOrder.orderStatus !== 'Delivered' && (
+                <button
+                  type="button"
+                  onClick={() => handleMarkDelivered(selectedOrder)}
+                  className="btn-row-settle"
+                >
+                  <Check size={12} style={{ color: '#059669' }} />
+                  <span>Mark as Delivered</span>
+                </button>
+              )}
+
+              {selectedOrder.orderStatus !== 'Cancelled' && (
+                <button
+                  type="button"
+                  onClick={() => handleCancelOrder(selectedOrder)}
+                  className="btn-row-action cancel"
+                >
+                  Cancel Order
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const ord = selectedOrder;
+                  setSelectedOrder(null);
+                  openDeleteModal(ord);
+                }}
+                className="btn-row-action delete"
+              >
+                Permanent Delete
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* DANGER ORDER DELETION MODAL */}
-      {orderToDelete && (
-        <div className="admin-modal-overlay" onClick={() => !deleteLoading && setOrderToDelete(null)}>
-          <div className="admin-delete-modal-box" onClick={e => e.stopPropagation()}>
-            <button
-              type="button"
-              className="admin-modal-close"
-              disabled={deleteLoading}
-              onClick={() => setOrderToDelete(null)}
-              aria-label="Cancel deletion"
-            >
-              <X size={16} />
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span className="delete-header-pill">
-                <AlertTriangle size={13} /> Danger Action
-              </span>
-            </div>
-
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#991B1B', margin: '6px 0 2px 0' }}>
-              Delete Order {orderToDelete.orderNumber}
-            </h2>
-            <p style={{ fontSize: '0.8rem', color: '#64748B', margin: '0 0 12px 0' }}>
-              Permanent deletion removes this order from the database and dispatch engine.
-            </p>
-
-            <div className="delete-summary-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <strong style={{ fontSize: '0.9rem', color: '#0F172A' }}>{orderToDelete.customer.name}</strong>
-                <span style={{ fontWeight: 800, color: '#DC2626', fontSize: '1rem' }}>
-                  ₹{orderToDelete.total.toLocaleString('en-IN')}
-                </span>
+      {/* ========================================================================= */}
+      {/* MODAL 2: CHANGE PRODUCT & CUSTOM PRICING (Image 5)                        */}
+      {/* ========================================================================= */}
+      {orderToChange && (
+        <div className="pro-modal-overlay">
+          <div className="pro-modal-box">
+            <div className="pro-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#EEF2FF', color: '#4338CA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ArrowRightLeft size={14} />
+                </div>
+                <div>
+                  <h3 className="pro-modal-title">Change Product & Custom Pricing</h3>
+                  <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Order {orderToChange.orderNumber} • Customer: {orderToChange.customer.name}</div>
+                </div>
               </div>
-              <p style={{ fontSize: '0.78rem', color: '#475569', margin: '2px 0' }}>
-                📱 {orderToDelete.customer.phone} · 📍 {orderToDelete.customer.city}, {orderToDelete.customer.pincode}
-              </p>
-              <p style={{ fontSize: '0.78rem', color: '#64748B', margin: '3px 0 0 0' }}>
-                📦 {orderToDelete.items.reduce((s, i) => s + i.qty, 0)} item(s) · Current Status: <strong>{orderToDelete.orderStatus}</strong>
-              </p>
+              <button type="button" onClick={() => setOrderToChange(null)} className="pro-modal-close-btn">
+                ✕
+              </button>
             </div>
 
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#1E293B', marginBottom: '5px' }}>
-                Select Delete Type / Reason: <span style={{ color: '#DC2626' }}>*</span>
-              </label>
-              <select
-                value={deleteType}
-                onChange={e => setDeleteType(e.target.value)}
-                className="delete-reason-select"
-              >
-                <option value="Customer Cancellation">🛑 Customer Cancelled (Changed mind / Requested refund)</option>
-                <option value="Fake / Bot COD Order">🚫 Fake / Fraud COD (Unreachable phone / Suspicious bot)</option>
-                <option value="Duplicate / Test Order">🔁 Duplicate / Test Order (Placed twice or dev testing)</option>
-                <option value="Payment Failed / Expired">💳 Payment Failed / Abandoned (Incomplete checkout)</option>
-                <option value="Out of Stock / Unfulfillable">📦 Out of Stock / Unfulfillable (Crafting delay)</option>
-                <option value="Permanent Record Wipe">🗑️ Permanent Record Wipe (Hard removal from database)</option>
-              </select>
+            <div className="pro-modal-body">
+              {/* Snapshot */}
+              <div className="change-snapshot-card">
+                <div>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    CURRENT ORDER SNAPSHOT
+                  </div>
+                  <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.88rem', marginTop: '2px' }}>
+                    {orderToChange.items && orderToChange.items[0]?.name}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748B' }}>
+                    SKU: HK-{(orderToChange.items[0]?.id || 'ITEM').toUpperCase()} • Qty: {orderToChange.items[0]?.qty || 1} unit
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#94A3B8', fontWeight: 700 }}>Current Total:</div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#2563EB' }}>
+                    ₹{orderToChange.total.toLocaleString('en-IN')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Select Dropdown */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#334155' }}>
+                    🛍️ Select Product / Quantity Pack:
+                  </label>
+                  <span style={{ fontSize: '0.68rem', color: '#2563EB', fontWeight: 700 }}>
+                    Auto-loads catalog price
+                  </span>
+                </div>
+                <select
+                  value={changeProductId}
+                  onChange={e => handleProductSelectionChange(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.76rem', fontWeight: 700, color: '#0F172A', background: '#FFF' }}
+                >
+                  {Object.values(HOPEKRAFT_PRODUCTS).map(prod => (
+                    <option key={prod.id} value={prod.id}>
+                      {prod.name} [₹{prod.price}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Editable Pricing & Shipping (4 inputs) */}
+              <div style={{ border: '1px solid #E2E8F0', borderRadius: '8px', padding: '10px 12px', background: '#FFF', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#0F172A' }}>🔢 Editable Pricing & Shipping</span>
+                  <span style={{ fontSize: '0.65rem', color: '#94A3B8' }}>Edit any field to customize</span>
+                </div>
+
+                <div className="pricing-inputs-grid">
+                  <div className="pricing-input-cell">
+                    <label>Quantity:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={changeQty}
+                      onChange={e => setChangeQty(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                    />
+                  </div>
+
+                  <div className="pricing-input-cell">
+                    <label>Unit Price (₹):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={changeUnitPrice}
+                      onChange={e => setChangeUnitPrice(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                    />
+                  </div>
+
+                  <div className="pricing-input-cell">
+                    <label>Delivery Fee (₹):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={changeDeliveryFee}
+                      onChange={e => setChangeDeliveryFee(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                    />
+                  </div>
+
+                  <div className="pricing-input-cell">
+                    <label>Discount (-₹):</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={changeDiscount}
+                      onChange={e => setChangeDiscount(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                      style={{ color: '#15803D' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Calculation Summary Box */}
+                <div className="change-summary-banner">
+                  <div style={{ color: '#475569' }}>
+                    Subtotal: <strong>₹{changeSubtotal}</strong> • Delivery: <strong>{changeDeliveryFee > 0 ? `₹${changeDeliveryFee}` : 'FREE'}</strong><br />
+                    Discount: <strong style={{ color: '#15803D' }}>-₹{changeDiscount}</strong> • COD Fee: <strong>₹0</strong>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>Final Order Amount:</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#2563EB' }}>
+                      ₹{changeFinalTotal}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, color: '#334155', marginBottom: '4px' }}>
+                  Reason / Notes:
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Customer requested upgrade via phone"
+                  value={changeNotes}
+                  onChange={e => setChangeNotes(e.target.value)}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.75rem', background: '#F8FAFC' }}
+                />
+              </div>
+
+              {/* Shiprocket Sync Advisory */}
+              <div className="change-advisory-note">
+                <strong>📦 Shiprocket Live Sync:</strong> Updating will ensure the new product, custom price, and delivery fee are stored in Firebase Database for pickup and label generation.
+              </div>
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#1E293B', marginBottom: '5px' }}>
-                Additional Reason / Audit Notes (Optional):
-              </label>
-              <input
-                type="text"
-                value={deleteReasonNotes}
-                onChange={e => setDeleteReasonNotes(e.target.value)}
-                placeholder="e.g. Customer requested cancellation via WhatsApp call"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  border: '1.5px solid #CBD5E1',
-                  fontSize: '0.82rem',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  background: '#FFFFFF'
-                }}
-              />
-            </div>
+            {/* Footer Buttons */}
+            <div className="pro-modal-footer">
+              <button type="button" onClick={() => setOrderToChange(null)} className="btn-header-action">
+                Cancel
+              </button>
 
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#991B1B', marginBottom: '5px' }}>
-                Type &quot;DELETE&quot; to confirm:
-              </label>
-              <input
-                type="text"
-                value={deleteConfirmInput}
-                onChange={e => setDeleteConfirmInput(e.target.value)}
-                placeholder="DELETE"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  border: '1.5px solid #FCA5A5',
-                  fontSize: '0.88rem',
-                  fontWeight: 700,
-                  color: '#991B1B',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  background: '#FEF2F2',
-                  textTransform: 'uppercase'
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                disabled={deleteLoading}
-                onClick={() => setOrderToDelete(null)}
-                style={{
-                  padding: '7px 14px',
-                  borderRadius: '6px',
-                  border: '1px solid #CBD5E1',
-                  background: '#F8FAFC',
-                  color: '#475569',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
+                onClick={handleSaveChangedOrder}
+                disabled={changeLoading}
+                className="btn-header-action"
+                style={{ background: '#2563EB', borderColor: '#2563EB', color: '#FFF', fontWeight: 800 }}
               >
-                Cancel
+                {changeLoading ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
+                <span>Apply & Update Order (Recalculate)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 3: PERMANENT DELETE MODAL                                           */}
+      {/* ========================================================================= */}
+      {orderToDelete && (
+        <div className="pro-modal-overlay">
+          <div className="pro-modal-box" style={{ maxWidth: '420px' }}>
+            <div className="pro-modal-header" style={{ background: '#FFF1F2' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={18} style={{ color: '#E11D48' }} />
+                <h3 className="pro-modal-title" style={{ color: '#9F1239' }}>Delete Order {orderToDelete.orderNumber}?</h3>
+              </div>
+              <button type="button" onClick={() => setOrderToDelete(null)} className="pro-modal-close-btn">
+                ✕
+              </button>
+            </div>
+
+            <div className="pro-modal-body" style={{ fontSize: '0.76rem' }}>
+              <p style={{ color: '#64748B' }}>
+                This action is permanent and will remove the order completely from Firebase Realtime Database.
+              </p>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 800, color: '#334155', marginBottom: '4px' }}>
+                  Reason:
+                </label>
+                <select
+                  value={deleteType}
+                  onChange={e => setDeleteType(e.target.value)}
+                  style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '0.75rem', fontWeight: 600 }}
+                >
+                  <option value="Customer Cancellation">Customer Cancellation</option>
+                  <option value="Fake / RTO Order">Fake / RTO Order</option>
+                  <option value="Test / Duplicate Order">Test / Duplicate Order</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 800, color: '#334155', marginBottom: '4px' }}>
+                  Type <span style={{ color: '#E11D48', fontFamily: 'monospace' }}>DELETE</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  placeholder="DELETE"
+                  value={deleteConfirmInput}
+                  onChange={e => setDeleteConfirmInput(e.target.value)}
+                  style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #FDA4AF', textAlign: 'center', fontWeight: 800, color: '#E11D48', fontFamily: 'monospace' }}
+                />
+              </div>
+            </div>
+
+            <div className="pro-modal-footer">
+              <button type="button" onClick={() => setOrderToDelete(null)} className="btn-header-action">
+                Keep Order
               </button>
               <button
                 type="button"
-                disabled={deleteLoading || deleteConfirmInput.trim().toUpperCase() !== 'DELETE'}
                 onClick={handleConfirmDelete}
-                style={{
-                  padding: '7px 16px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: deleteConfirmInput.trim().toUpperCase() === 'DELETE' ? '#DC2626' : '#FCA5A5',
-                  color: '#FFFFFF',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  cursor: deleteConfirmInput.trim().toUpperCase() === 'DELETE' ? 'pointer' : 'not-allowed',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}
+                disabled={deleteConfirmInput.trim().toUpperCase() !== 'DELETE' || deleteLoading}
+                style={{ background: '#E11D48', border: 'none', color: '#FFF', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', opacity: deleteConfirmInput.trim().toUpperCase() !== 'DELETE' ? 0.4 : 1 }}
               >
-                <Trash2 size={13} />
-                {deleteLoading ? 'Deleting...' : 'Confirm Delete'}
+                {deleteLoading ? 'Deleting...' : 'Permanently Delete'}
               </button>
             </div>
           </div>
@@ -1512,8 +1494,9 @@ export default function AdminOrdersPage() {
   return (
     <Suspense
       fallback={
-        <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ display: 'inline-block', width: '32px', height: '32px', border: '3px solid #4F46E5', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <div style={{ minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}>
+          <RefreshCw size={18} className="animate-spin" />
+          <span style={{ marginLeft: '8px', fontWeight: 600 }}>Loading Orders Dashboard...</span>
         </div>
       }
     >

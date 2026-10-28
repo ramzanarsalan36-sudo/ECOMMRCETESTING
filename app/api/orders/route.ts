@@ -139,3 +139,20 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+
+export async function DELETE(req: NextRequest) {
+  const token = req.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  const admin = await verifyAdminToken(token);
+  if (!admin) {
+    return NextResponse.json({ success: false, error: 'Unauthorized: Admin login required' }, { status: 401 });
+  }
+
+  const { clearAllOrders } = await import('@/lib/db');
+  const success = await clearAllOrders();
+
+  return NextResponse.json({
+    success,
+    message: success ? 'All orders cleared successfully from Firebase' : 'Failed to clear orders'
+  });
+}

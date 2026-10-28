@@ -54,144 +54,18 @@ export interface Order {
   updatedAt: string;
 }
 
-// Initial realistic seed orders for instant rich dashboard visualization
-const INITIAL_ORDERS: Order[] = [
-  {
-    id: 'HK-91204',
-    orderNumber: '#HK-91204',
-    customer: {
-      name: 'Priya Sharma',
-      phone: '+91 98765 43210',
-      email: 'priya.sharma@example.com',
-      address: 'Flat 402, Green Meadows Apartment, 12th Main, Indiranagar',
-      city: 'Bengaluru',
-      pincode: '560038',
-      state: 'Karnataka'
-    },
-    items: [
-      {
-        id: 'easel',
-        name: 'HOPEKRAFT Wooden Kids Easel',
-        price: 3499,
-        qty: 1,
-        image: '/assets/images/easel_full.jpg'
-      }
-    ],
-    subtotal: 3499,
-    discount: 0,
-    shipping: 0,
-    total: 3499,
-    paymentMethod: 'razorpay',
-    paymentStatus: 'paid',
-    razorpayOrderId: 'order_HK91204_rzp',
-    razorpayPaymentId: 'pay_OnL19x8ZqW',
-    orderStatus: 'Confirmed',
-    shippingStatus: 'manifested',
-    shiprocketOrderId: 'SR-7849102',
-    shiprocketShipmentId: 'SR-SHIP-49102',
-    awbCode: '78492019402',
-    courierName: 'BlueDart Express',
-    trackingUrl: 'https://shiprocket.co/tracking/78492019402',
-    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 2).toISOString()
-  },
-  {
-    id: 'HK-89301',
-    orderNumber: '#HK-89301',
-    customer: {
-      name: 'Vikram Malhotra',
-      phone: '+91 98112 34567',
-      email: 'vikram.m@gmail.com',
-      address: 'B-14, Shivalik Enclave, Malviya Nagar',
-      city: 'New Delhi',
-      pincode: '110017',
-      state: 'Delhi'
-    },
-    items: [
-      {
-        id: 'blocks',
-        name: 'Wooden Alphabet & Number Blocks',
-        price: 1299,
-        qty: 1,
-        image: '/assets/images/product_blocks.png'
-      },
-      {
-        id: 'rings',
-        name: 'Wooden Stacking Ring Tower',
-        price: 999,
-        qty: 1,
-        image: '/assets/images/product_rings.png'
-      }
-    ],
-    subtotal: 2298,
-    discount: 0,
-    shipping: 0,
-    total: 2298,
-    paymentMethod: 'cod',
-    paymentStatus: 'pending',
-    orderStatus: 'Shipped',
-    shippingStatus: 'in_transit',
-    shiprocketOrderId: 'SR-7848911',
-    shiprocketShipmentId: 'SR-SHIP-48911',
-    awbCode: '18490284711',
-    courierName: 'Delhivery Surface',
-    trackingUrl: 'https://shiprocket.co/tracking/18490284711',
-    createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 6).toISOString()
-  },
-  {
-    id: 'HK-87115',
-    orderNumber: '#HK-87115',
-    customer: {
-      name: 'Ananya Deshmukh',
-      phone: '+91 97654 32109',
-      email: 'ananya.deshmukh@yahoo.com',
-      address: 'Plot 77, Baner Hill Trail, Opposite Orchid School',
-      city: 'Pune',
-      pincode: '411045',
-      state: 'Maharashtra'
-    },
-    items: [
-      {
-        id: 'train',
-        name: 'Wooden Train Set',
-        price: 1499,
-        qty: 2,
-        image: '/assets/images/product_train.png'
-      }
-    ],
-    subtotal: 2998,
-    discount: 299,
-    shipping: 0,
-    total: 2699,
-    paymentMethod: 'upi',
-    paymentStatus: 'paid',
-    orderStatus: 'Delivered',
-    shippingStatus: 'delivered',
-    shiprocketOrderId: 'SR-7834211',
-    shiprocketShipmentId: 'SR-SHIP-34211',
-    awbCode: '99283746193',
-    courierName: 'Ekart Logistics',
-    trackingUrl: 'https://shiprocket.co/tracking/99283746193',
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 1).toISOString()
-  }
-];
-
 // Global in-memory cache
 // Using globalThis ensures orders persist across hot-reloads during Next.js dev
 const globalForOrders = globalThis as unknown as {
   hopekraft_orders?: Order[];
-  hopekraft_seeded?: boolean;
 };
 
 if (!globalForOrders.hopekraft_orders) {
-  globalForOrders.hopekraft_orders = [...INITIAL_ORDERS];
+  globalForOrders.hopekraft_orders = [];
 }
 
 /**
  * Fetch all orders from Firebase Realtime Database.
- * Auto-seeds initial orders if Firebase RTDB is empty!
  */
 export async function getAllOrders(): Promise<Order[]> {
   try {
@@ -246,13 +120,9 @@ export async function getAllOrders(): Promise<Order[]> {
       );
     }
 
-    // If Firebase RTDB is currently empty, seed the initial orders
-    if (!globalForOrders.hopekraft_seeded) {
-      globalForOrders.hopekraft_seeded = true;
-      for (const order of INITIAL_ORDERS) {
-        await firebasePut(`orders/${order.id}`, order);
-      }
-    }
+    // Remote is empty
+    globalForOrders.hopekraft_orders = [];
+    return [];
   } catch (err) {
     console.warn('[DB] Firebase sync fallback to local cache:', err);
   }
@@ -379,3 +249,16 @@ export async function deleteOrder(id: string): Promise<boolean> {
   }
 }
 
+/**
+ * Clear all orders from Firebase Realtime Database and in-memory cache
+ */
+export async function clearAllOrders(): Promise<boolean> {
+  globalForOrders.hopekraft_orders = [];
+  try {
+    await firebaseDelete('orders');
+    return true;
+  } catch (err) {
+    console.error('[DB] Failed to clear all orders in Firebase RTDB:', err);
+    return false;
+  }
+}
