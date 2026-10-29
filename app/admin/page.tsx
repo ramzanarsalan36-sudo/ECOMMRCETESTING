@@ -835,26 +835,24 @@ function AdminOrdersPageContent() {
         </div>
       </div>
 
-      {/* 5. ORDERS DATA TABLE */}
+      {/* 5. ORDERS DATA TABLE (100% Screen Fit, Zero Horizontal Scroll) */}
       <div className="admin-table-container">
         <table className="admin-orders-table">
           <thead>
             <tr>
-              <th style={{ width: '13%' }}>ORDER & DATE</th>
-              <th style={{ width: '23%' }}>CLIENT INFORMATION</th>
-              <th style={{ width: '17%' }}>PRODUCT / ITEMS</th>
-              <th style={{ width: '9%' }}>AMOUNT</th>
-              <th style={{ width: '10%' }}>PAYMENT</th>
-              <th style={{ width: '11%' }}>SHIPPING / AWB</th>
-              <th style={{ width: '9%', textAlign: 'center' }}>SETTLEMENT</th>
-              <th style={{ width: '18%', textAlign: 'right', paddingRight: '14px' }}>ACTIONS</th>
+              <th style={{ width: '15%' }}>ORDER & STATUS</th>
+              <th style={{ width: '22%' }}>CLIENT DETAILS</th>
+              <th style={{ width: '19%' }}>PRODUCT & SKU</th>
+              <th style={{ width: '13%' }}>AMOUNT & PAYMENT</th>
+              <th style={{ width: '15%' }}>SHIPPING & SETTLEMENT</th>
+              <th style={{ width: '16%', textAlign: 'right', paddingRight: '12px' }}>ACTIONS</th>
             </tr>
           </thead>
 
           <tbody>
             {filteredOrders.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '48px 16px', color: '#64748B' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '48px 16px', color: '#64748B' }}>
                   <Package size={36} style={{ margin: '0 auto 10px auto', color: '#94A3B8' }} />
                   <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0F172A' }}>
                     No Orders Found
@@ -879,15 +877,21 @@ function AdminOrdersPageContent() {
                     key={order.id}
                     className={`row-status-${order.orderStatus.toLowerCase()}`}
                   >
-                    {/* Order & Date */}
+                    {/* 1. Order & Status (2 Lines) */}
                     <td>
-                      <div
-                        onClick={() => openOrderModal(order)}
-                        style={{ fontWeight: 800, color: '#2563EB', cursor: 'pointer' }}
-                      >
-                        {order.orderNumber}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span
+                          onClick={() => openOrderModal(order)}
+                          style={{ fontWeight: 800, color: '#2563EB', cursor: 'pointer', fontSize: '0.82rem' }}
+                        >
+                          {order.orderNumber}
+                        </span>
+                        <span className={`status-pill ${order.orderStatus.toLowerCase()}`} style={{ fontSize: '0.65rem', padding: '1px 5px' }}>
+                          <span className="status-dot"></span>
+                          {order.orderStatus}
+                        </span>
                       </div>
-                      <div style={{ fontSize: '0.68rem', color: '#94A3B8', marginTop: '1px' }}>
+                      <div style={{ fontSize: '0.68rem', color: '#94A3B8', marginTop: '2px' }}>
                         {new Date(order.createdAt).toLocaleDateString('en-IN', {
                           day: 'numeric',
                           month: 'short'
@@ -899,153 +903,160 @@ function AdminOrdersPageContent() {
                       </div>
                     </td>
 
-                    {/* Client Information */}
+                    {/* 2. Client Details (2 Lines) */}
                     <td>
-                      <div className="client-oneline">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <span className="client-avatar">{initialChar}</span>
-                        <span className="client-name" title={order.customer.name}>{order.customer.name}</span>
-                        <span className="client-dot">•</span>
-                        <a href={`tel:${order.customer.phone}`} className="client-phone" style={{ textDecoration: 'none' }}>
+                        <strong style={{ color: '#0F172A', fontSize: '0.78rem' }}>{order.customer.name}</strong>
+                        <span style={{ color: '#CBD5E1' }}>•</span>
+                        <a href={`tel:${order.customer.phone}`} style={{ color: '#2563EB', textDecoration: 'none', fontSize: '0.72rem', fontFamily: 'monospace' }}>
                           {order.customer.phone}
                         </a>
-                        <span className="client-dot">•</span>
-                        <span className="client-city" title={`${order.customer.city} (${order.customer.pincode})`}>
-                          {order.customer.city}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748B', marginTop: '2px', paddingLeft: '25px' }}>
+                        📍 {order.customer.city} • {order.customer.pincode}
+                      </div>
+                    </td>
+
+                    {/* 3. Product & SKU (2 Lines) */}
+                    <td>
+                      <div style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.76rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={firstItem ? firstItem.name : ''}>
+                        {firstItem ? firstItem.name : 'Custom Item'}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748B', marginTop: '2px' }}>
+                        SKU: HK-{(firstItem?.id || 'ITEM').toUpperCase()} • <strong>{totalUnits} unit{totalUnits !== 1 ? 's' : ''}</strong>
+                      </div>
+                    </td>
+
+                    {/* 4. Amount & Payment (2 Lines) */}
+                    <td>
+                      <div style={{ fontWeight: 900, color: '#0F172A', fontSize: '0.85rem' }}>
+                        ₹{order.total.toLocaleString('en-IN')}.00
+                      </div>
+                      <div style={{ marginTop: '2px' }}>
+                        <span className={`payment-pill ${isPaid ? 'paid' : 'pending'}`} style={{ fontSize: '0.64rem', padding: '1px 5px' }}>
+                          {isCOD ? 'COD' : isPaid ? `PAID` : `PENDING`}
                         </span>
                       </div>
                     </td>
 
-                    {/* Product / Items */}
+                    {/* 5. Shipping & Settlement (2 Lines) */}
                     <td>
-                      <div className="items-oneline">
-                        <span title={firstItem ? firstItem.name : ''}>
-                          {totalUnits > 1 ? `${totalUnits}x items` : `1x ${firstItem ? firstItem.name : 'Item'}`}
-                        </span>
+                      <div>
+                        {order.awbCode ? (
+                          <a
+                            href={order.trackingUrl || '#'}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="courier-badge"
+                            style={{ fontSize: '0.68rem', padding: '2px 5px' }}
+                            title={`Track on ${order.courierName}`}
+                          >
+                            <Truck size={10} />
+                            <span>{order.courierName || 'Shiprocket'}: {order.awbCode}</span>
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: '0.68rem', color: '#D97706', fontWeight: 700 }}>
+                            ● Processing Dispatch
+                          </span>
+                        )}
                       </div>
-                    </td>
 
-                    {/* Amount */}
-                    <td>
-                      <strong style={{ color: '#0F172A', fontSize: '0.8rem' }}>
-                        ₹{order.total.toLocaleString('en-IN')}
-                      </strong>
-                    </td>
-
-                    {/* Payment */}
-                    <td>
-                      <span className={`payment-pill ${isPaid ? 'paid' : 'pending'}`}>
-                        {isCOD ? 'COD' : isPaid ? `PAID - ${order.paymentMethod.toUpperCase()}` : `PENDING`}
-                      </span>
-                    </td>
-
-                    {/* Shipping / AWB */}
-                    <td>
-                      {order.awbCode ? (
-                        <a
-                          href={order.trackingUrl || '#'}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="courier-badge"
-                          title={`Track on ${order.courierName}`}
-                        >
-                          <Truck size={11} />
-                          <span>{order.courierName || 'Shiprocket'}: {order.awbCode}</span>
-                        </a>
-                      ) : (
-                        <span style={{ fontSize: '0.68rem', color: '#D97706', fontWeight: 700 }}>
-                          ● Processing Dispatch
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Settlement */}
-                    <td style={{ textAlign: 'center' }}>
-                      {order.orderStatus === 'Delivered' ? (
-                        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#059669', background: '#DCFCE7', padding: '3px 8px', borderRadius: '4px' }}>
-                          ✓ Settled
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleMarkDelivered(order)}
-                          className="btn-row-settle"
-                          title="Mark order as Delivered & Settled"
-                        >
-                          <Check size={11} style={{ color: '#059669' }} />
-                          <span>Mark Delivered</span>
-                        </button>
-                      )}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="td-actions">
-                      <div className="actions-btn-group">
-                        {/* WhatsApp Customer */}
-                        <button
-                          type="button"
-                          onClick={() => handleWhatsAppCustomer(order)}
-                          className="btn-row-action whatsapp"
-                          title="WhatsApp Customer"
-                        >
-                          <MessageSquare size={12} />
-                          <span>WhatsApp</span>
-                        </button>
-
-                        {/* Shiprocket Dispatch */}
-                        <button
-                          type="button"
-                          onClick={() => handleAssignToShiprocket(order.id)}
-                          disabled={assigningOrderId === order.id || !!order.awbCode}
-                          className="btn-row-action shiprocket"
-                          title={order.awbCode ? 'Pushed to Shiprocket' : 'Push to Shiprocket'}
-                        >
-                          <Truck size={12} />
-                          <span>Shiprocket</span>
-                        </button>
-
-                        {/* Change Product / Custom Pricing */}
-                        <button
-                          type="button"
-                          onClick={() => openChangeModal(order)}
-                          className="btn-row-action change"
-                          title="Change Product & Custom Pricing"
-                        >
-                          <ArrowRightLeft size={12} />
-                          <span>Change</span>
-                        </button>
-
-                        {/* View Order Modal */}
-                        <button
-                          type="button"
-                          onClick={() => openOrderModal(order)}
-                          className="btn-row-action view"
-                          title="View order details"
-                        >
-                          <Eye size={12} />
-                          <span>View</span>
-                        </button>
-
-                        {/* Cancel Order */}
-                        {order.orderStatus !== 'Cancelled' && (
+                      <div style={{ marginTop: '3px' }}>
+                        {order.orderStatus === 'Delivered' ? (
+                          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#059669', background: '#DCFCE7', padding: '1px 6px', borderRadius: '4px' }}>
+                            ✓ Delivered (Settled)
+                          </span>
+                        ) : (
                           <button
                             type="button"
-                            onClick={() => handleCancelOrder(order)}
-                            className="btn-row-action cancel"
-                            title="Cancel order"
+                            onClick={() => handleMarkDelivered(order)}
+                            className="btn-row-settle"
+                            style={{ padding: '2px 6px', fontSize: '0.68rem' }}
+                            title="Mark order as Delivered & Settled"
                           >
-                            Cancel
+                            <Check size={10} style={{ color: '#059669' }} />
+                            <span>Mark Delivered</span>
                           </button>
                         )}
+                      </div>
+                    </td>
 
-                        {/* Delete Order */}
-                        <button
-                          type="button"
-                          onClick={() => openDeleteModal(order)}
-                          className="btn-row-action delete"
-                          title="Delete Order"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                    {/* 6. Actions (2 Lines Layout, Fits within 100% table) */}
+                    <td className="td-actions">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-end' }}>
+                        {/* Action Row 1: WhatsApp | Shiprocket | Change */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleWhatsAppCustomer(order)}
+                            className="btn-row-action whatsapp"
+                            style={{ padding: '2px 6px', fontSize: '0.68rem' }}
+                            title="Chat with Customer on WhatsApp"
+                          >
+                            <MessageSquare size={10} />
+                            <span>WhatsApp</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleAssignToShiprocket(order.id)}
+                            disabled={assigningOrderId === order.id || !!order.awbCode}
+                            className="btn-row-action shiprocket"
+                            style={{ padding: '2px 6px', fontSize: '0.68rem' }}
+                            title={order.awbCode ? 'Pushed to Shiprocket' : 'Push to Shiprocket'}
+                          >
+                            <Truck size={10} />
+                            <span>Shiprocket</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => openChangeModal(order)}
+                            className="btn-row-action change"
+                            style={{ padding: '2px 6px', fontSize: '0.68rem' }}
+                            title="Change Product & Custom Pricing"
+                          >
+                            <ArrowRightLeft size={10} />
+                            <span>Change</span>
+                          </button>
+                        </div>
+
+                        {/* Action Row 2: View | Cancel | Delete */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <button
+                            type="button"
+                            onClick={() => openOrderModal(order)}
+                            className="btn-row-action view"
+                            style={{ padding: '2px 6px', fontSize: '0.68rem' }}
+                            title="View order details"
+                          >
+                            <Eye size={10} />
+                            <span>View</span>
+                          </button>
+
+                          {order.orderStatus !== 'Cancelled' && (
+                            <button
+                              type="button"
+                              onClick={() => handleCancelOrder(order)}
+                              className="btn-row-action cancel"
+                              style={{ padding: '2px 6px', fontSize: '0.68rem' }}
+                              title="Cancel order"
+                            >
+                              Cancel
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => openDeleteModal(order)}
+                            className="btn-row-action delete"
+                            style={{ padding: '2px 5px' }}
+                            title="Delete Order"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>
