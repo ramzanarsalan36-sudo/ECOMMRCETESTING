@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllOrders, createOrder, updateOrder } from '@/lib/db';
+import { getAllOrders, createOrder } from '@/lib/db';
 import { verifyAdminToken, ADMIN_COOKIE_NAME } from '@/lib/auth';
-import { verifyRazorpaySignature } from '@/lib/razorpay';
+import { verifyRazorpaySignature, fetchRazorpayOrder } from '@/lib/razorpay';
 import { HOPEKRAFT_PRODUCTS } from '@/lib/products';
 
 export async function GET(req: NextRequest) {
@@ -47,28 +47,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Server-side price recalculation (Never trust client prices)
+    // 1. Strict Server-Side Product & Price Verification (Inspect Element Tamper-Proof)
     let verifiedSubtotal = 0;
-    const verifiedItems = items.map((item: any) => {
+    const verifiedItems = [];
+
+    for (const item of items) {
       const prod = HOPEKRAFT_PRODUCTS[item.id];
-      const realPrice = prod ? prod.price : (Number(item.price) || 3499);
+      if (!prod) {
+        return NextResponse.json(
+          { success: false, error: `Invalid product ID '${item.id || 'unknown'}'. Product does not exist in catalog.` },
+          { status: 400 }
+        );
+      }
+
       const qty = Math.max(1, parseInt(item.qty || item.quantity || 1, 10));
+      const realPrice = prod.price; // Strict catalog price from server
       verifiedSubtotal += realPrice * qty;
-      return {
-        id: item.id,
-        name: prod ? prod.name : (item.name || 'HOPEKRAFT Product'),
+
+      verifiedItems.push({
+        id: prod.id,
+        name: prod.name,
         price: realPrice,
         qty,
-        image: prod ? prod.image : (item.image || '/assets/images/easel_full.jpg')
-      };
-    });
+        image: prod.image
+      });
+    }
 
     const isOnlinePayment = paymentMethod === 'online' || paymentMethod === 'razorpay';
     const verifiedDiscount = isOnlinePayment ? 100 : 0;
     const verifiedShipping = 0;
     const verifiedTotal = Math.max(0, verifiedSubtotal - verifiedDiscount + verifiedShipping);
 
-    // 2. Strict Payment Signature Verification for Online Payments
+    // 2. Strict Payment Signature & Amount Verification for Online Payments
     let isPaid = false;
     if (isOnlinePayment) {
       if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
@@ -89,6 +99,21 @@ export async function POST(req: NextRequest) {
           { success: false, error: 'Payment verification failed: Invalid or forged Razorpay signature.' },
           { status: 400 }
         );
+      }
+
+      // Check if Razorpay order amount matches server-calculated amount
+      const rzpOrder = await fetchRazorpayOrder(razorpayOrderId);
+      if (rzpOrder) {
+        const expectedPaise = verifiedTotal * 100;
+        if (rzpOrder.amount !== expectedPaise) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Security Alert: Payment amount mismatch! Expected Rs.${verifiedTotal}, but Razorpay order was for Rs.${rzpOrder.amount / 100}.`
+            },
+            { status: 400 }
+          );
+        }
       }
 
       isPaid = true;
@@ -123,9 +148,6 @@ export async function POST(req: NextRequest) {
       shippingStatus: 'unfulfilled'
     });
 
-    // NOTE: Order is saved safely as 'unfulfilled'.
-    // It will ONLY be moved to Shiprocket when the Admin verifies and clicks "Assign to Shiprocket" in /admin.
-
     return NextResponse.json({
       success: true,
       message: 'Order created successfully',
@@ -139,7 +161,6 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
 
 export async function DELETE(req: NextRequest) {
   const token = req.cookies.get(ADMIN_COOKIE_NAME)?.value;

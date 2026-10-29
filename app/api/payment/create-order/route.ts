@@ -7,20 +7,31 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { productId, items, paymentMethod = 'online', receipt = `rcpt_${Date.now()}`, notes } = body;
 
-    // Calculate server-side verified amount
+    // Calculate server-side verified amount (Inspect Element tamper-proof)
     let serverSubtotal = 0;
 
     if (Array.isArray(items) && items.length > 0) {
       for (const item of items) {
         const prod = HOPEKRAFT_PRODUCTS[item.id];
-        const unitPrice = prod ? prod.price : (item.price || 3499);
+        if (!prod) {
+          return NextResponse.json(
+            { success: false, error: `Invalid product ID '${item.id}'. Product not found in catalog.` },
+            { status: 400 }
+          );
+        }
         const qty = Math.max(1, parseInt(item.qty || item.quantity || 1, 10));
-        serverSubtotal += unitPrice * qty;
+        serverSubtotal += prod.price * qty;
       }
-    } else if (productId && HOPEKRAFT_PRODUCTS[productId]) {
-      serverSubtotal = HOPEKRAFT_PRODUCTS[productId].price;
+    } else if (productId) {
+      const prod = HOPEKRAFT_PRODUCTS[productId];
+      if (!prod) {
+        return NextResponse.json(
+          { success: false, error: `Invalid productId '${productId}'. Product not found in catalog.` },
+          { status: 400 }
+        );
+      }
+      serverSubtotal = prod.price;
     } else {
-      // Default fallback to Easel
       serverSubtotal = HOPEKRAFT_PRODUCTS.easel.price;
     }
 

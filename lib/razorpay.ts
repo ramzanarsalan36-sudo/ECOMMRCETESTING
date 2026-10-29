@@ -80,6 +80,29 @@ export async function createRazorpayOrder(options: CreateRazorpayOrderOptions): 
 }
 
 /**
+ * Fetches Razorpay Order details from REST API to verify amount paid
+ */
+export async function fetchRazorpayOrder(orderId: string): Promise<RazorpayOrderResponse | null> {
+  const isRealKey = RAZORPAY_KEY_ID && !RAZORPAY_KEY_ID.includes('hopekraft12345') && RAZORPAY_KEY_SECRET;
+  if (!isRealKey || !orderId) return null;
+
+  try {
+    const basicAuth = btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`);
+    const res = await fetch(`https://api.razorpay.com/v1/orders/${orderId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${basicAuth}`
+      }
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching Razorpay order:', err);
+    return null;
+  }
+}
+
+/**
  * Verifies Razorpay payment signature using Web Crypto HMAC-SHA256
  */
 export async function verifyRazorpaySignature(
@@ -135,6 +158,39 @@ export async function verifyRazorpaySignature(
     return generatedHex === razorpaySignature;
   } catch (err) {
     console.error('Signature verification error:', err);
+    return false;
+  }
+}
+
+/**
+ * Verifies Razorpay Webhook signature using Web Crypto HMAC-SHA256
+ */
+export async function verifyRazorpayWebhookSignature(
+  rawBody: string,
+  signature: string,
+  secret: string
+): Promise<boolean> {
+  if (!rawBody || !signature || !secret) return false;
+  try {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    const signatureBuffer = await crypto.subtle.sign(
+      'HMAC',
+      cryptoKey,
+      encoder.encode(rawBody)
+    );
+    const hashArray = Array.from(new Uint8Array(signatureBuffer));
+    const generatedHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return generatedHex === signature;
+  } catch (err) {
+    console.error('Webhook signature verification error:', err);
     return false;
   }
 }
