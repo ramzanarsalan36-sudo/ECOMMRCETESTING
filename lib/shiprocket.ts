@@ -8,7 +8,7 @@ import { Order } from './db';
 
 const SHIPROCKET_EMAIL = process.env.SHIPROCKET_EMAIL || '';
 const SHIPROCKET_PASSWORD = process.env.SHIPROCKET_PASSWORD || '';
-const SHIPROCKET_PICKUP_PINCODE = process.env.SHIPROCKET_PICKUP_PINCODE || '560038';
+const SHIPROCKET_PICKUP_PINCODE = process.env.SHIPROCKET_PICKUP_PINCODE || '423203';
 
 let cachedToken: string | null = null;
 let tokenExpiresAt: number = 0;

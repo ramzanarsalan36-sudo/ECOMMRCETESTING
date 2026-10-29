@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
         email: customer.email?.trim() || '',
         address: customer.address.trim(),
         city: customer.city.trim(),
-        pincode: customer.pincode?.trim() || '560038',
+        pincode: customer.pincode?.trim() || '423203',
         state: customer.state?.trim() || 'India'
       },
       items: verifiedItems,
